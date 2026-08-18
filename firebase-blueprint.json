@@ -1,0 +1,130 @@
+{
+  "entities": {
+    "restaurant_profiles": {
+      "title": "Restaurant Profile",
+      "description": "Store branding, tax rates, GSTIN, currency, and invoice terms",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "tagline": { "type": "string" },
+        "address": { "type": "string" },
+        "phone": { "type": "string" },
+        "email": { "type": "string" },
+        "taxId": { "type": "string" },
+        "currencySymbol": { "type": "string" },
+        "currencyCode": { "type": "string" },
+        "defaultTaxRate": { "type": "number" },
+        "defaultServiceCharge": { "type": "number" },
+        "receiptFooterMessage": { "type": "string" },
+        "invoiceTerms": { "type": "string" },
+        "invoicePrefix": { "type": "string" },
+        "receiptPrefix": { "type": "string" }
+      },
+      "required": ["name", "currencySymbol", "currencyCode"]
+    },
+    "menu_items": {
+      "title": "Menu Item",
+      "description": "Restaurant dishes and drinks with prices, COGS, description, image, and dietary tags",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "category": { "type": "string" },
+        "price": { "type": "number" },
+        "costPrice": { "type": "number" },
+        "description": { "type": "string" },
+        "isVeg": { "type": "boolean" },
+        "isSpicy": { "type": "boolean" },
+        "isGlutenFree": { "type": "boolean" },
+        "isAvailable": { "type": "boolean" },
+        "preparationTime": { "type": "number" },
+        "imageUrl": { "type": "string" }
+      },
+      "required": ["id", "name", "category", "price"]
+    },
+    "orders": {
+      "title": "Bill & Order",
+      "description": "Customer bills, POS orders, invoices, items, tax, discounts, and payments",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "invoiceNumber": { "type": "string" },
+        "orderType": { "type": "string" },
+        "items": { "type": "array" },
+        "subtotal": { "type": "number" },
+        "taxAmount": { "type": "number" },
+        "serviceChargeAmount": { "type": "number" },
+        "total": { "type": "number" },
+        "amountPaid": { "type": "number" },
+        "paymentStatus": { "type": "string" },
+        "paymentMethod": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "invoiceNumber", "total", "paymentStatus", "paymentMethod"]
+    },
+    "expenses": {
+      "title": "Expense Record",
+      "description": "Vendor expenses, supplier invoices, line items, and receipt photos",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "vendorName": { "type": "string" },
+        "category": { "type": "string" },
+        "amount": { "type": "number" },
+        "paymentStatus": { "type": "string" },
+        "paymentMethod": { "type": "string" },
+        "date": { "type": "string" }
+      },
+      "required": ["id", "vendorName", "category", "amount", "date"]
+    },
+    "staff_accounts": {
+      "title": "Staff Account",
+      "description": "Restaurant employee, manager, and admin user profiles with role-based access pins and contact info",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "displayName": { "type": "string" },
+        "role": { "type": "string" },
+        "email": { "type": "string" },
+        "phone": { "type": "string" },
+        "pin": { "type": "string" },
+        "employeeCode": { "type": "string" },
+        "status": { "type": "string" },
+        "notes": { "type": "string" }
+      },
+      "required": ["id", "displayName", "role", "pin"]
+    }
+  },
+  "firestore": {
+    "restaurant_profiles": {
+      "/restaurant_profiles/{profileId}": {
+        "schema": "#/entities/restaurant_profiles",
+        "description": "Primary restaurant profile"
+      }
+    },
+    "menu_items": {
+      "/menu_items/{itemId}": {
+        "schema": "#/entities/menu_items",
+        "description": "Dishes and beverages in menu catalog"
+      }
+    },
+    "orders": {
+      "/orders/{orderId}": {
+        "schema": "#/entities/orders",
+        "description": "POS billing tickets and customer invoices"
+      }
+    },
+    "expenses": {
+      "/expenses/{expenseId}": {
+        "schema": "#/entities/expenses",
+        "description": "Operational and ingredient expense records"
+      }
+    },
+    "staff_accounts": {
+      "/staff_accounts/{staffId}": {
+        "schema": "#/entities/staff_accounts",
+        "description": "Staff roster accounts, cashier credentials, and admin profiles"
+      }
+    }
+  }
+}

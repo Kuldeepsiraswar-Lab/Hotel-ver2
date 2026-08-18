@@ -1,0 +1,48 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@layer utilities {
+  @media print {
+    body {
+      background: #ffffff !important;
+      color: #000000 !important;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+    }
+
+    /* Hide background interface, navbars, and modal backdrops during print */
+    body * {
+      visibility: hidden;
+    }
+
+    #printable-invoice-content,
+    #printable-invoice-content * {
+      visibility: visible;
+    }
+
+    #printable-invoice-content {
+      position: absolute;
+      left: 0;
+      top: 0;
+      margin: 0 auto !important;
+      box-shadow: none !important;
+      border: none !important;
+      background: #ffffff !important;
+      width: 100% !important;
+    }
+
+    /* Specific 80mm thermal receipt roll layout when printing receipt */
+    #printable-invoice-content.thermal-receipt-mode {
+      width: 80mm !important;
+      max-width: 80mm !important;
+      margin: 0 auto !important;
+      padding: 3mm !important;
+      font-size: 11px !important;
+    }
+
+    @page {
+      margin: 6mm;
+    }
+  }
+}

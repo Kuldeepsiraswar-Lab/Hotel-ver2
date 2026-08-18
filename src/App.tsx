@@ -27,11 +27,13 @@ import { InvoiceViewer } from './components/InvoiceViewer';
 import { AIReceiptScannerModal } from './components/AIReceiptScannerModal';
 import { SettingsModal } from './components/SettingsModal';
 import { TableQRManagerModal } from './components/TableQRManagerModal';
+import { TableQRView } from './components/TableQRView';
 import { CustomerTableOrdering } from './components/CustomerTableOrdering';
 import { LoginModal } from './components/LoginModal';
 import { StaffManagementModal } from './components/StaffManagementModal';
 import { CloudDatabaseService } from './firebase';
-import { playOrderChimeSound } from './utils/sound';
+import { playOrderChimeSound, playKitchenBell } from './utils/sound';
+import { generateId } from './utils/formatters';
 import { CheckCircle2, Cloud, RefreshCw, Bell, QrCode, Volume2, Shield } from 'lucide-react';
 import { isKitchenStaff, canUserAccessTab, canAccessSettings, canAccessStaffManagement, canAccessTableQR } from './utils/permissions';
 
@@ -750,6 +752,43 @@ export default function App() {
         onPlaceOrder={(order) => {
           handleSaveOrder(order);
         }}
+        onUpdateOrderStatus={(order) => {
+          handleSaveOrder(order);
+        }}
+        onServiceRequest={(table, requestType, note) => {
+          const title = requestType === 'bill'
+            ? `🧾 Bill Requested (${table})`
+            : requestType === 'drink'
+            ? `🍷 Drinks / Water Request (${table})`
+            : requestType === 'cutlery'
+            ? `🍴 Cutlery Request (${table})`
+            : `🛎️ Waiter Call (${table})`;
+
+          const message = note
+            ? `${table} notes: ${note}`
+            : requestType === 'bill'
+            ? `Guest at ${table} requested the bill & payment.`
+            : requestType === 'drink'
+            ? `Guest at ${table} requested drinks / water refill.`
+            : requestType === 'cutlery'
+            ? `Guest at ${table} requested cutlery / napkins.`
+            : `Guest at ${table} requested server assistance.`;
+
+          const newNotif: AppNotification = {
+            id: generateId('notif'),
+            type: 'call_server',
+            title,
+            message,
+            tableNumber: table,
+            timestamp: new Date().toISOString(),
+            read: false,
+          };
+
+          setNotifications(prev => [newNotif, ...prev.slice(0, 49)]);
+          try {
+            playKitchenBell();
+          } catch (e) {}
+        }}
         onExitCustomerView={() => {
           setCustomerTableMode(null);
           if (typeof window !== 'undefined') {
@@ -906,6 +945,17 @@ export default function App() {
                 onAddCategory={handleAddCategory}
                 onDeleteCategory={handleDeleteCategory}
                 onRenameCategory={handleRenameCategory}
+              />
+            )}
+
+            {activeTab === 'tableqr' && (
+              <TableQRView
+                profile={profile}
+                orders={orders}
+                currentUser={currentUser}
+                onOpenCustomerView={(tableNum) => {
+                  setCustomerTableMode(tableNum);
+                }}
               />
             )}
           </>

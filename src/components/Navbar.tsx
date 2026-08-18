@@ -2,15 +2,9 @@ import React, { useState } from 'react';
 import { 
   Menu,
   UtensilsCrossed, 
-  Receipt, 
-  FileText, 
-  TrendingDown, 
-  TrendingUp, 
-  ChefHat, 
   Flame, 
   Settings, 
   Cloud, 
-  ChevronDown, 
   Sun,
   Moon
 } from 'lucide-react';
@@ -20,7 +14,7 @@ import { NavDrawer } from './NavDrawer';
 import { useTheme } from '../context/ThemeContext';
 import { isKitchenStaff, canAccessSettings } from '../utils/permissions';
 
-export type NavTab = 'pos' | 'kitchen' | 'invoices' | 'expenses' | 'financials' | 'menu';
+export type NavTab = 'pos' | 'kitchen' | 'invoices' | 'expenses' | 'financials' | 'menu' | 'tableqr';
 
 interface NavbarProps {
   activeTab: NavTab;
@@ -75,18 +69,6 @@ export const Navbar: React.FC<NavbarProps> = ({
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
   const isKitchen = isKitchenStaff(currentUser);
-
-  const tabsConfig: Record<NavTab, { label: string; icon: React.ElementType; badge?: number; badgeColor?: string }> = {
-    pos: { label: 'POS Billing', icon: Receipt, badge: openOrdersCount > 0 ? openOrdersCount : undefined, badgeColor: 'bg-amber-500 text-slate-950' },
-    kitchen: { label: 'Kitchen View', icon: Flame, badge: activeKitchenOrdersCount > 0 ? activeKitchenOrdersCount : undefined, badgeColor: 'bg-amber-400 text-slate-950 animate-pulse' },
-    invoices: { label: 'Invoices & Catering', icon: FileText },
-    expenses: { label: 'Expenses & COGS', icon: TrendingDown, badge: unpaidExpensesCount > 0 ? unpaidExpensesCount : undefined, badgeColor: 'bg-red-500 text-white' },
-    financials: { label: 'P&L Health', icon: TrendingUp },
-    menu: { label: 'Menu & Costing', icon: ChefHat },
-  };
-
-  const activeTabMeta = tabsConfig[activeTab] || tabsConfig.kitchen;
-  const ActiveIcon = activeTabMeta.icon;
 
   return (
     <>
@@ -150,35 +132,6 @@ export const Navbar: React.FC<NavbarProps> = ({
                   </p>
                 </div>
               </div>
-            </div>
-
-            {/* Center: Current Active View Breadcrumb Indicator */}
-            <div 
-              onClick={() => setIsDrawerOpen(true)}
-              className={`flex items-center gap-2 px-3 py-1.5 border rounded-xl cursor-pointer transition-all ${
-                isKitchen 
-                  ? 'bg-rose-950/40 hover:bg-rose-900/40 border-rose-800/60' 
-                  : 'bg-slate-800/60 hover:bg-slate-800 border-slate-700/60'
-              }`}
-              title="Click to view navigation station status"
-            >
-              <ActiveIcon className={`w-4 h-4 ${isKitchen ? 'text-rose-400' : 'text-amber-400'}`} />
-              <span className="text-xs font-bold text-slate-100 hidden sm:inline">
-                {isKitchen ? 'Kitchen Display (KDS Only)' : activeTabMeta.label}
-              </span>
-              {activeTabMeta.badge !== undefined && (
-                <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-black ${
-                  isKitchen ? 'bg-rose-500 text-white animate-pulse' : (activeTabMeta.badgeColor || 'bg-amber-400 text-slate-950')
-                }`}>
-                  {activeTabMeta.badge} Active
-                </span>
-              )}
-              {isKitchen && (
-                <span className="text-[10px] bg-rose-500/20 text-rose-300 px-1.5 py-0.5 rounded font-mono font-bold hidden md:inline">
-                  Station Locked
-                </span>
-              )}
-              <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
             </div>
 
             {/* Right Action Tools */}

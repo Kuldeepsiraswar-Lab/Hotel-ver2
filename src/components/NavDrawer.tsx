@@ -160,6 +160,15 @@ export const NavDrawer: React.FC<NavDrawerProps> = ({
       icon: ChefHat,
       isAllowedForKitchen: false,
     },
+    {
+      id: 'tableqr' as NavTab,
+      label: 'Table QR Self-Order',
+      subLabel: 'Digital table standees, guest Wi-Fi & customer ordering',
+      icon: QrCode,
+      badge: 'QR Menu',
+      badgeColor: 'bg-indigo-500 text-white font-black',
+      isAllowedForKitchen: false,
+    },
   ];
 
   const handleItemClick = (tabId: NavTab) => {
@@ -308,7 +317,7 @@ export const NavDrawer: React.FC<NavDrawerProps> = ({
             <div className="px-2.5 mb-2 flex items-center justify-between text-[11px] font-extrabold uppercase tracking-wider text-slate-400">
               <span>Station Views</span>
               <span className="text-[10px] text-amber-400/80 lowercase">
-                {isKitchen ? '1 view available' : '6 views'}
+                {isKitchen ? '1 view available' : '7 modules'}
               </span>
             </div>
 

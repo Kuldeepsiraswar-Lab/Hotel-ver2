@@ -82,92 +82,25 @@ export default function App() {
   const [newOrderAlert, setNewOrderAlert] = useState<{ table: string; invoice: string; itemsCount: number } | null>(null);
 
   // Restaurant Profile State
-  const [profile, setProfile] = useState<RestaurantProfile>(() => {
-    const saved = localStorage.getItem(STORAGE_KEYS.PROFILE);
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        if (parsed.currencyCode === 'USD' || !parsed.currencySymbol || parsed.currencySymbol === '$') {
-          parsed.currencySymbol = '₹';
-          parsed.currencyCode = 'INR';
-          if (parsed.defaultTaxRate === 8.5) parsed.defaultTaxRate = 5.0;
-          if (parsed.defaultServiceCharge === 10) parsed.defaultServiceCharge = 5.0;
-        }
-        return parsed;
-      } catch (e) {}
-    }
-    return defaultRestaurantProfile;
-  });
+  const [profile, setProfile] = useState<RestaurantProfile>(defaultRestaurantProfile);
 
-  // Menu Items State
-  const [menuItems, setMenuItems] = useState<MenuItem[]>(() => {
-    const saved = localStorage.getItem(STORAGE_KEYS.MENU);
-    if (saved) {
-      try { return JSON.parse(saved); } catch (e) {}
-    }
-    return defaultMenuItems;
-  });
+  // Menu Items State (Online Cloud First)
+  const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
 
-  // Orders / Invoices State
-  const [orders, setOrders] = useState<BillOrder[]>(() => {
-    const saved = localStorage.getItem(STORAGE_KEYS.ORDERS);
-    if (saved) {
-      try { return JSON.parse(saved); } catch (e) {}
-    }
-    return defaultBillOrders;
-  });
+  // Orders / Invoices State (Online Cloud First)
+  const [orders, setOrders] = useState<BillOrder[]>([]);
 
-  // Expenses State
-  const [expenses, setExpenses] = useState<Expense[]>(() => {
-    const saved = localStorage.getItem(STORAGE_KEYS.EXPENSES);
-    if (saved) {
-      try { return JSON.parse(saved); } catch (e) {}
-    }
-    return defaultExpenses;
-  });
+  // Expenses State (Online Cloud First)
+  const [expenses, setExpenses] = useState<Expense[]>([]);
 
-  // Menu Categories State
-  const [categories, setCategories] = useState<string[]>(() => {
-    const saved = localStorage.getItem(STORAGE_KEYS.CATEGORIES);
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-      } catch (e) {}
-    }
-    return defaultMenuCategories;
-  });
+  // Menu Categories State (Online Cloud First)
+  const [categories, setCategories] = useState<string[]>([]);
 
   // Notifications State (Table QR Orders, live alerts)
-  const [notifications, setNotifications] = useState<AppNotification[]>(() => {
-    const saved = localStorage.getItem(STORAGE_KEYS.NOTIFICATIONS);
-    if (saved) {
-      try { 
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-      } catch (e) {}
-    }
-    return [
-      {
-        id: 'notif-demo-1',
-        type: 'qr_order',
-        title: 'Table 3 • QR Self-Order',
-        message: 'Order received with 3 items • Dine-in Table 3',
-        tableNumber: 'Table 3',
-        invoiceNumber: 'INV-2026-003',
-        orderId: 'ord-3',
-        timestamp: new Date(Date.now() - 1000 * 60 * 12).toISOString(),
-        read: false,
-        amount: 880,
-        itemsCount: 3,
-        itemsSummary: '1x Margherita Pizza, 1x Truffle Pasta, 1x Tiramisu',
-        customerName: 'Ananya & Rohan',
-      }
-    ];
-  });
+  const [notifications, setNotifications] = useState<AppNotification[]>([]);
 
   // Keep track of known order IDs to detect newly arrived orders from Firestore in real-time
-  const knownOrderIdsRef = useRef<Set<string>>(new Set(orders.map(o => o.id)));
+  const knownOrderIdsRef = useRef<Set<string>>(new Set());
 
   // Authentication & Staff User State
   const [currentUser, setCurrentUser] = useState<StaffUser | null>(() => {
@@ -182,16 +115,7 @@ export default function App() {
   });
 
   // Staff Roster Accounts
-  const [staffList, setStaffList] = useState<StaffUser[]>(() => {
-    const saved = localStorage.getItem(STORAGE_KEYS.STAFF);
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-      } catch (e) {}
-    }
-    return defaultStaffAccounts;
-  });
+  const [staffList, setStaffList] = useState<StaffUser[]>(defaultStaffAccounts);
 
   const [isLoginModalOpen, setIsLoginModalOpen] = useState<boolean>(true);
   const [isTerminalLocked, setIsTerminalLocked] = useState<boolean>(false);
@@ -201,14 +125,24 @@ export default function App() {
   const [isCloudSyncing, setIsCloudSyncing] = useState<boolean>(false);
   const [cloudToast, setCloudToast] = useState<string | null>(null);
   const [cloudError, setCloudError] = useState<string | null>(null);
-  const initialCloudSyncDone = useRef(false);
+
+  // Clear legacy mock localStorage items on boot so online cloud is the single source of truth
+  useEffect(() => {
+    try {
+      localStorage.removeItem(STORAGE_KEYS.MENU);
+      localStorage.removeItem(STORAGE_KEYS.ORDERS);
+      localStorage.removeItem(STORAGE_KEYS.EXPENSES);
+      localStorage.removeItem(STORAGE_KEYS.CATEGORIES);
+      localStorage.removeItem(STORAGE_KEYS.NOTIFICATIONS);
+    } catch (e) {}
+  }, []);
 
   // Modals & Overlay States
   const [viewingInvoice, setViewingInvoice] = useState<BillOrder | null>(null);
   const [isAIScannerOpen, setIsAIScannerOpen] = useState<boolean>(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
 
-  // Sync to LocalStorage (Instant local fallback cache)
+  // Save current logged in user session
   useEffect(() => {
     if (currentUser) {
       localStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(currentUser));
@@ -298,7 +232,7 @@ export default function App() {
     }, 8000);
   };
 
-  // Google Cloud Firestore Real-time Subscriptions & Initial Seeding
+  // Google Cloud Firestore Real-time Subscriptions (Cloud-Only Source of Truth)
   useEffect(() => {
     let unsubProfile: (() => void) | undefined;
     let unsubMenu: (() => void) | undefined;
@@ -310,63 +244,47 @@ export default function App() {
     const setupCloudDatabase = async () => {
       try {
         setIsCloudSyncing(true);
-        // Check if database is empty on Google Cloud
-        const isEmpty = await CloudDatabaseService.checkIsDatabaseEmpty();
-        
-        if (isEmpty && !initialCloudSyncDone.current) {
-          initialCloudSyncDone.current = true;
-          // Seed all initial restaurant data to Google Cloud Firestore
-          await CloudDatabaseService.syncAllToCloud({
-            profile,
-            menuItems,
-            orders,
-            expenses,
-            categories,
-            staff: staffList
-          });
-          showCloudToast("Seeded all restaurant data into Google Cloud Firestore!");
-        } else {
-          initialCloudSyncDone.current = true;
-        }
 
-        // Subscribe to real-time Cloud updates
+        // Subscribe to real-time Cloud updates directly into React state
         unsubProfile = CloudDatabaseService.subscribeProfile((cloudProfile) => {
           if (cloudProfile) setProfile(cloudProfile);
         });
 
         unsubMenu = CloudDatabaseService.subscribeMenuItems((cloudItems) => {
-          if (cloudItems && cloudItems.length > 0) setMenuItems(cloudItems);
+          setMenuItems(cloudItems || []);
         });
 
         unsubStaff = CloudDatabaseService.subscribeStaff((cloudStaff) => {
-          if (cloudStaff && cloudStaff.length > 0) setStaffList(cloudStaff);
-        });
-
-        unsubOrders = CloudDatabaseService.subscribeOrders((cloudOrders) => {
-          if (cloudOrders && cloudOrders.length > 0) {
-            // Detect newly added orders from other devices/customers
-            const previousKnown = knownOrderIdsRef.current;
-            const newIncomingOrders = cloudOrders.filter(o => !previousKnown.has(o.id));
-            
-            if (newIncomingOrders.length > 0) {
-              // Trigger notification & sound chime for newly arrived orders
-              newIncomingOrders.forEach(ord => {
-                triggerOrderNotification(ord);
-              });
-            }
-
-            // Update known orders set
-            knownOrderIdsRef.current = new Set(cloudOrders.map(o => o.id));
-            setOrders(cloudOrders);
+          if (cloudStaff && cloudStaff.length > 0) {
+            setStaffList(cloudStaff);
+          } else {
+            // Seed initial staff roster accounts to cloud if empty so admin can log in
+            defaultStaffAccounts.forEach(s => CloudDatabaseService.saveStaffMember(s));
           }
         });
 
+        unsubOrders = CloudDatabaseService.subscribeOrders((cloudOrders) => {
+          const list = cloudOrders || [];
+          const previousKnown = knownOrderIdsRef.current;
+          const newIncomingOrders = list.filter(o => !previousKnown.has(o.id));
+          
+          if (newIncomingOrders.length > 0 && previousKnown.size > 0) {
+            // Trigger notification & chime for newly arrived orders
+            newIncomingOrders.forEach(ord => {
+              triggerOrderNotification(ord);
+            });
+          }
+
+          knownOrderIdsRef.current = new Set(list.map(o => o.id));
+          setOrders(list);
+        });
+
         unsubExpenses = CloudDatabaseService.subscribeExpenses((cloudExpenses) => {
-          if (cloudExpenses && cloudExpenses.length > 0) setExpenses(cloudExpenses);
+          setExpenses(cloudExpenses || []);
         });
 
         unsubCategories = CloudDatabaseService.subscribeCategories((cloudCats) => {
-          if (cloudCats && cloudCats.length > 0) setCategories(cloudCats);
+          setCategories(cloudCats || []);
         });
 
         setIsCloudSyncing(false);
@@ -416,6 +334,61 @@ export default function App() {
       setIsCloudSyncing(false);
       setCloudError("Cloud synchronization failed");
     }
+  };
+
+  // Seed standard sample dishes and demo data to online Google Cloud
+  const handleSeedSampleData = async () => {
+    try {
+      setIsCloudSyncing(true);
+      setCloudError(null);
+      await CloudDatabaseService.syncAllToCloud({
+        profile: defaultRestaurantProfile,
+        menuItems: defaultMenuItems,
+        orders: defaultBillOrders,
+        expenses: defaultExpenses,
+        categories: defaultMenuCategories,
+        staff: defaultStaffAccounts,
+      });
+      setIsCloudSyncing(false);
+      showCloudToast("Sample dishes & data seeded to Google Cloud Firestore!");
+    } catch (err) {
+      console.error("Seed sample data failed:", err);
+      setIsCloudSyncing(false);
+      setCloudError("Failed to seed sample data to cloud");
+    }
+  };
+
+  // Wipe all online cloud collections
+  const handleClearAllCloudData = async () => {
+    try {
+      setIsCloudSyncing(true);
+      setCloudError(null);
+      await CloudDatabaseService.clearAllCloudData();
+      setMenuItems([]);
+      setOrders([]);
+      setExpenses([]);
+      setCategories([]);
+      setNotifications([]);
+      knownOrderIdsRef.current = new Set();
+      setIsCloudSyncing(false);
+      showCloudToast("All online Google Cloud collections have been cleared!");
+    } catch (err) {
+      console.error("Clear cloud data failed:", err);
+      setIsCloudSyncing(false);
+      setCloudError("Failed to clear cloud database");
+    }
+  };
+
+  // Clear local browser cache
+  const handleClearLocalCache = () => {
+    try {
+      localStorage.removeItem(STORAGE_KEYS.MENU);
+      localStorage.removeItem(STORAGE_KEYS.ORDERS);
+      localStorage.removeItem(STORAGE_KEYS.EXPENSES);
+      localStorage.removeItem(STORAGE_KEYS.CATEGORIES);
+      localStorage.removeItem(STORAGE_KEYS.NOTIFICATIONS);
+      showCloudToast("Local browser cache cleared!");
+    } catch (e) {}
   };
 
   // Staff User Registration & Roster Handlers
@@ -1005,6 +978,9 @@ export default function App() {
         onExportAllData={handleExportAllData}
         onImportData={handleImportData}
         onSyncToCloud={handleManualCloudSync}
+        onClearAllCloudData={handleClearAllCloudData}
+        onSeedSampleData={handleSeedSampleData}
+        onClearLocalCache={handleClearLocalCache}
         isCloudSyncing={isCloudSyncing}
         onOpenStaffManagement={() => setIsStaffManagementOpen(true)}
       />

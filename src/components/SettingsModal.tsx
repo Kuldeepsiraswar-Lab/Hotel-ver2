@@ -39,6 +39,9 @@ interface SettingsModalProps {
   onExportAllData: () => void;
   onImportData: (data: any) => void;
   onSyncToCloud?: () => void;
+  onClearAllCloudData?: () => void;
+  onSeedSampleData?: () => void;
+  onClearLocalCache?: () => void;
   isCloudSyncing?: boolean;
   onOpenStaffManagement?: () => void;
 }
@@ -53,6 +56,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   onExportAllData,
   onImportData,
   onSyncToCloud,
+  onClearAllCloudData,
+  onSeedSampleData,
+  onClearLocalCache,
   isCloudSyncing,
   onOpenStaffManagement,
 }) => {
@@ -67,6 +73,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     adminPin: profile.adminPin || '8888',
   });
   const [isConfirmingReset, setIsConfirmingReset] = useState(false);
+  const [isConfirmingCloudWipe, setIsConfirmingCloudWipe] = useState(false);
   const [importStatus, setImportStatus] = useState<string | null>(null);
   const [adminAuthPrompt, setAdminAuthPrompt] = useState<{
     isOpen: boolean;
@@ -557,6 +564,102 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white"
                 />
               </div>
+            </div>
+          </div>
+
+          {/* Google Cloud Online Database Management */}
+          <div className="pt-3 border-t border-slate-200 dark:border-slate-800 bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800/40 p-4 rounded-xl space-y-3">
+            <div className="flex items-center justify-between">
+              <h4 className="font-bold text-emerald-900 dark:text-emerald-300 text-xs uppercase tracking-wider flex items-center gap-1.5">
+                <Cloud className="w-4 h-4 text-emerald-600 dark:text-emerald-400" /> Google Cloud Firestore Online Database
+              </h4>
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 dark:bg-emerald-900/60 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700/50">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" /> Live Online Sync
+              </span>
+            </div>
+            <p className="text-xs text-slate-600 dark:text-slate-400">
+              Your restaurant billing data is connected directly to Google Cloud Firestore in real-time. Changes across all staff terminals and customer QR codes sync live without relying on local storage.
+            </p>
+
+            <div className="flex flex-wrap items-center gap-2.5 pt-1">
+              {onSyncToCloud && (
+                <button
+                  type="button"
+                  onClick={onSyncToCloud}
+                  disabled={isCloudSyncing}
+                  className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-bold text-xs flex items-center gap-1.5 shadow-xs cursor-pointer disabled:opacity-50"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${isCloudSyncing ? 'animate-spin' : ''}`} />
+                  {isCloudSyncing ? 'Syncing to Cloud...' : 'Sync All Data to Cloud'}
+                </button>
+              )}
+
+              {onSeedSampleData && (
+                <button
+                  type="button"
+                  onClick={onSeedSampleData}
+                  disabled={isCloudSyncing}
+                  className="px-3 py-1.5 bg-white dark:bg-slate-800 border border-emerald-300 dark:border-emerald-700 hover:bg-emerald-50 dark:hover:bg-slate-700 text-emerald-800 dark:text-emerald-300 rounded-lg font-bold text-xs flex items-center gap-1.5 shadow-xs cursor-pointer"
+                >
+                  <Database className="w-3.5 h-3.5" /> Seed Sample Menu to Cloud
+                </button>
+              )}
+
+              {onClearLocalCache && (
+                <button
+                  type="button"
+                  onClick={onClearLocalCache}
+                  className="px-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-lg font-semibold text-xs flex items-center gap-1.5 shadow-xs cursor-pointer"
+                >
+                  <RotateCcw className="w-3.5 h-3.5" /> Clear Local Cache
+                </button>
+              )}
+
+              {onClearAllCloudData && (
+                <>
+                  {!isConfirmingCloudWipe ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (isAdmin) {
+                          setIsConfirmingCloudWipe(true);
+                        } else {
+                          setAdminAuthPrompt({
+                            isOpen: true,
+                            title: 'Admin Authorization: Clear Cloud Data',
+                            description: 'Wiping cloud collections removes all live online menu, orders, and expenses. Enter Admin PIN (8888).',
+                            onSuccess: () => setIsConfirmingCloudWipe(true),
+                          });
+                        }
+                      }}
+                      className="px-3 py-1.5 bg-red-50 dark:bg-red-950/40 hover:bg-red-100 dark:hover:bg-red-900/50 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-800/60 rounded-lg font-bold text-xs flex items-center gap-1.5 ml-auto cursor-pointer"
+                    >
+                      <RotateCcw className="w-3.5 h-3.5" /> Wipe Online Cloud Data
+                    </button>
+                  ) : (
+                    <div className="flex items-center gap-1.5 ml-auto bg-red-100 dark:bg-red-950/60 p-1.5 rounded-lg border border-red-300 dark:border-red-700">
+                      <span className="text-[11px] font-bold text-red-800 dark:text-red-300">Wipe cloud database?</span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          onClearAllCloudData();
+                          setIsConfirmingCloudWipe(false);
+                        }}
+                        className="px-2 py-1 bg-red-600 hover:bg-red-700 text-white rounded text-[10px] font-bold cursor-pointer"
+                      >
+                        Yes, Wipe Cloud
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setIsConfirmingCloudWipe(false)}
+                        className="px-2 py-1 bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 rounded text-[10px] cursor-pointer"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  )}
+                </>
+              )}
             </div>
           </div>
 

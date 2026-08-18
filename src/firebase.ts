@@ -156,9 +156,7 @@ export const CloudDatabaseService = {
       snapshot.forEach((docSnap) => {
         items.push(docSnap.data() as MenuItem);
       });
-      if (items.length > 0) {
-        onUpdate(items);
-      }
+      onUpdate(items);
     }, (error) => {
       handleFirestoreError(error, OperationType.GET, COLLECTIONS.MENU_ITEMS);
     });
@@ -195,11 +193,9 @@ export const CloudDatabaseService = {
       snapshot.forEach((docSnap) => {
         orders.push(docSnap.data() as BillOrder);
       });
-      if (orders.length > 0) {
-        // Sort newest first
-        orders.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-        onUpdate(orders);
-      }
+      // Sort newest first
+      orders.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      onUpdate(orders);
     }, (error) => {
       handleFirestoreError(error, OperationType.GET, COLLECTIONS.ORDERS);
     });
@@ -236,11 +232,9 @@ export const CloudDatabaseService = {
       snapshot.forEach((docSnap) => {
         expenses.push(docSnap.data() as Expense);
       });
-      if (expenses.length > 0) {
-        // Sort newest first
-        expenses.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-        onUpdate(expenses);
-      }
+      // Sort newest first
+      expenses.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      onUpdate(expenses);
     }, (error) => {
       handleFirestoreError(error, OperationType.GET, COLLECTIONS.EXPENSES);
     });
@@ -264,6 +258,8 @@ export const CloudDatabaseService = {
     return onSnapshot(docRef, (snap) => {
       if (snap.exists() && Array.isArray(snap.data()?.list)) {
         onUpdate(snap.data().list);
+      } else {
+        onUpdate([]);
       }
     }, (error) => {
       handleFirestoreError(error, OperationType.GET, COLLECTIONS.CATEGORIES);
@@ -301,9 +297,7 @@ export const CloudDatabaseService = {
       snapshot.forEach((docSnap) => {
         staffList.push(docSnap.data() as StaffUser);
       });
-      if (staffList.length > 0) {
-        onUpdate(staffList);
-      }
+      onUpdate(staffList);
     }, (error) => {
       handleFirestoreError(error, OperationType.LIST, COLLECTIONS.STAFF);
     });
@@ -373,6 +367,37 @@ export const CloudDatabaseService = {
       return snap.empty;
     } catch (err) {
       return false;
+    }
+  },
+
+  // Clear all data from Google Cloud Firestore
+  async clearAllCloudData() {
+    try {
+      // 1. Delete menu items
+      const menuSnap = await getDocs(collection(db, COLLECTIONS.MENU_ITEMS));
+      const menuBatch = writeBatch(db);
+      menuSnap.forEach(d => menuBatch.delete(d.ref));
+      await menuBatch.commit();
+
+      // 2. Delete orders
+      const ordersSnap = await getDocs(collection(db, COLLECTIONS.ORDERS));
+      const ordersBatch = writeBatch(db);
+      ordersSnap.forEach(d => ordersBatch.delete(d.ref));
+      await ordersBatch.commit();
+
+      // 3. Delete expenses
+      const expSnap = await getDocs(collection(db, COLLECTIONS.EXPENSES));
+      const expBatch = writeBatch(db);
+      expSnap.forEach(d => expBatch.delete(d.ref));
+      await expBatch.commit();
+
+      // 4. Reset categories
+      await setDoc(doc(db, COLLECTIONS.CATEGORIES, 'main_categories'), { list: [] });
+
+      return true;
+    } catch (err) {
+      handleFirestoreError(err, OperationType.DELETE, 'clearAllCloudData');
+      throw err;
     }
   }
 };

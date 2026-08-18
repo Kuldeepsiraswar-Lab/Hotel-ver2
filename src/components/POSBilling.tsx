@@ -78,6 +78,18 @@ export const POSBilling: React.FC<POSBillingProps> = ({
   const [splitGuests, setSplitGuests] = useState<number>(2);
 
   const [mobileTab, setMobileTab] = useState<'menu' | 'cart'>('menu');
+  const [tableFreedNotification, setTableFreedNotification] = useState<string | null>(null);
+
+  // Table pending order helper to determine live availability
+  const getTablePendingOrder = (tbl: string) => {
+    return existingOrders.find(o => 
+      o.tableNumber?.toLowerCase() === tbl.toLowerCase() && 
+      o.paymentStatus === 'pending' && 
+      !o.isArchived
+    );
+  };
+
+  const currentTablePendingOrder = orderType === 'dine-in' ? getTablePendingOrder(tableNumber) : null;
 
   // Categories list extracted from passed categories + active menu
   const categories = [
@@ -215,6 +227,13 @@ export const POSBilling: React.FC<POSBillingProps> = ({
       origin: { y: 0.8 },
     });
 
+    if (status === 'paid' && orderType === 'dine-in' && tableNumber) {
+      setTableFreedNotification(`Payment completed for ${tableNumber}! Table is now marked Available to serve the next customer.`);
+      setTimeout(() => {
+        setTableFreedNotification(null);
+      }, 7000);
+    }
+
     handleClearCart();
     onViewInvoice(newOrder);
   };
@@ -222,6 +241,23 @@ export const POSBilling: React.FC<POSBillingProps> = ({
   return (
     <div className="flex flex-col lg:flex-row gap-4 sm:gap-5 h-[calc(100vh-5.5rem)] relative">
       
+      {/* Table Freed Live Notification Banner */}
+      {tableFreedNotification && (
+        <div className="absolute top-2 left-1/2 -translate-x-1/2 z-50 bg-emerald-950/95 border-2 border-emerald-400 text-emerald-100 px-4 py-2.5 rounded-2xl shadow-2xl flex items-center gap-2.5 text-xs font-black animate-in fade-in slide-in-from-top-3 duration-300">
+          <div className="w-6 h-6 rounded-full bg-emerald-400 text-slate-950 flex items-center justify-center font-black">
+            ✓
+          </div>
+          <span>{tableFreedNotification}</span>
+          <button
+            type="button"
+            onClick={() => setTableFreedNotification(null)}
+            className="ml-2 text-emerald-400 hover:text-white cursor-pointer"
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
       {/* Mobile Switcher Tab (Visible only on mobile/tablet screens < lg) */}
       <div className="flex lg:hidden bg-slate-200/90 dark:bg-slate-800 p-1 rounded-xl shrink-0 gap-1 shadow-xs">
         <button
@@ -289,20 +325,35 @@ export const POSBilling: React.FC<POSBillingProps> = ({
             <div className="flex items-center gap-1.5 overflow-x-auto max-w-full py-0.5">
               <span className="text-[11px] font-semibold text-slate-400 dark:text-slate-500 shrink-0">Table:</span>
               <div className="flex items-center gap-1">
-                {TABLES.map((tbl) => (
-                  <button
-                    key={tbl}
-                    type="button"
-                    onClick={() => setTableNumber(tbl)}
-                    className={`px-2 sm:px-2.5 py-1 text-[11px] font-bold rounded-lg shrink-0 transition-all ${
-                      tableNumber === tbl
-                        ? 'bg-slate-900 dark:bg-amber-500 text-amber-400 dark:text-slate-950 shadow-xs'
-                        : 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'
-                    }`}
-                  >
-                    {tbl}
-                  </button>
-                ))}
+                {TABLES.map((tbl) => {
+                  const pendingOrder = getTablePendingOrder(tbl);
+                  const isOccupied = !!pendingOrder;
+                  const isSelected = tableNumber === tbl;
+
+                  return (
+                    <button
+                      key={tbl}
+                      type="button"
+                      onClick={() => setTableNumber(tbl)}
+                      className={`px-2.5 py-1 text-[11px] font-bold rounded-lg shrink-0 transition-all flex items-center gap-1.5 cursor-pointer ${
+                        isSelected
+                          ? 'bg-slate-900 dark:bg-amber-500 text-amber-400 dark:text-slate-950 shadow-xs ring-2 ring-amber-400'
+                          : isOccupied
+                          ? 'bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-700/60 text-amber-900 dark:text-amber-300 hover:bg-amber-100'
+                          : 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-emerald-50 dark:hover:bg-emerald-950/30'
+                      }`}
+                      title={isOccupied ? `${tbl} is Occupied (Pending: ${formatCurrency(pendingOrder.total, profile.currencySymbol)})` : `${tbl} is Available to serve next customer`}
+                    >
+                      <span className={`w-1.5 h-1.5 rounded-full ${isOccupied ? 'bg-amber-500 animate-pulse' : 'bg-emerald-500'}`} />
+                      <span>{tbl}</span>
+                      {isOccupied && (
+                        <span className="text-[9px] px-1 py-0.2 bg-amber-200 dark:bg-amber-900 text-amber-950 dark:text-amber-200 rounded font-black">
+                          Busy
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
               </div>
               {onOpenTableQR && (
                 <button

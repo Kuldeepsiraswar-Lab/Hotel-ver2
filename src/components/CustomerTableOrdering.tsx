@@ -31,7 +31,8 @@ import {
   Smartphone,
   Eye,
   SlidersHorizontal,
-  CircleDot
+  CircleDot,
+  Coins
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { MenuItem, OrderItem, BillOrder, RestaurantProfile, PaymentMethod, KitchenStatus } from '../types';
@@ -77,18 +78,30 @@ export const CustomerTableOrdering: React.FC<CustomerTableOrderingProps> = ({
   // View & Modal States
   const [isCartOpen, setIsCartOpen] = useState<boolean>(false);
   const [isLiveBillOpen, setIsLiveBillOpen] = useState<boolean>(false);
+  const [isPayBillModalOpen, setIsPayBillModalOpen] = useState<boolean>(false);
   const [isServiceModalOpen, setIsServiceModalOpen] = useState<boolean>(false);
   const [selectedServiceType, setSelectedServiceType] = useState<ServiceActionType>('waiter');
   const [serviceCustomNote, setServiceCustomNote] = useState<string>('');
   const [serviceAlertToast, setServiceAlertToast] = useState<{ title: string; desc: string; icon: React.ElementType } | null>(null);
   const [isStatusExpanded, setIsStatusExpanded] = useState<boolean>(true);
   const [showSimulationTools, setShowSimulationTools] = useState<boolean>(false);
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<PaymentMethod>('card');
+  const [justPaidSession, setJustPaidSession] = useState<boolean>(false);
 
   // Identify active order for this table from real-time existingOrders
   const activeTableOrders = useMemo(() => {
     return existingOrders.filter(o => 
       o.tableNumber?.trim().toLowerCase() === tableNumber.trim().toLowerCase() && 
       o.paymentStatus === 'pending' && 
+      !o.isArchived
+    );
+  }, [existingOrders, tableNumber]);
+
+  // Recently paid orders on this table
+  const recentlyPaidOrders = useMemo(() => {
+    return existingOrders.filter(o => 
+      o.tableNumber?.trim().toLowerCase() === tableNumber.trim().toLowerCase() && 
+      o.paymentStatus === 'paid' && 
       !o.isArchived
     );
   }, [existingOrders, tableNumber]);
@@ -328,6 +341,64 @@ export const CustomerTableOrdering: React.FC<CustomerTableOrderingProps> = ({
     },
   ];
 
+  // Settle table payment and mark table available to serve next customer
+  const handleSettlePaymentAndFreeTable = (method: PaymentMethod = selectedPaymentMethod) => {
+    if (activeTableOrders.length === 0) return;
+
+    // Update all pending orders on this table to 'paid' in Cloud Firestore
+    activeTableOrders.forEach(ord => {
+      const updated: BillOrder = {
+        ...ord,
+        paymentStatus: 'paid',
+        paymentMethod: method,
+        amountPaid: ord.total,
+        updatedAt: new Date().toISOString(),
+      };
+      if (onUpdateOrderStatus) {
+        onUpdateOrderStatus(updated);
+      } else {
+        onPlaceOrder(updated);
+      }
+    });
+
+    confetti({
+      particleCount: 100,
+      spread: 70,
+      origin: { y: 0.6 },
+    });
+
+    try {
+      playOrderChimeSound();
+    } catch (e) {}
+
+    setJustPaidSession(true);
+    setIsPayBillModalOpen(false);
+    setIsLiveBillOpen(false);
+
+    triggerServiceToast(
+      'Payment Completed! 🟢',
+      `Payment settled for ${tableNumber}. Table status changed to Available to serve another customer.`,
+      CheckCircle2
+    );
+  };
+
+  const handleResetForNextCustomer = () => {
+    setCart([]);
+    setCustomerName('');
+    setCustomerPhone('');
+    setOrderNotes('');
+    setJustPaidSession(false);
+    setIsCartOpen(false);
+    setIsLiveBillOpen(false);
+    setIsPayBillModalOpen(false);
+
+    triggerServiceToast(
+      'Table Ready for Next Guest 🍽️',
+      `${tableNumber} is Available & ready for the next customer to place an order.`,
+      Sparkles
+    );
+  };
+
   const getStepIndex = (status: KitchenStatus) => {
     if (status === 'preparing') return 1;
     if (status === 'ready') return 2;
@@ -421,6 +492,41 @@ export const CustomerTableOrdering: React.FC<CustomerTableOrderingProps> = ({
       {/* Main Digital Menu Content */}
       <main className="max-w-4xl w-full mx-auto p-3 sm:p-4 space-y-4 flex-1">
         
+        {/* Table Availability Status Banner when table is available or payment just completed */}
+        {(!activeOrder || justPaidSession) && (
+          <div className="bg-emerald-950/70 border-2 border-emerald-500/60 rounded-3xl p-4 sm:p-5 shadow-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 text-emerald-100 animate-in fade-in duration-300">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-emerald-400 text-slate-950 flex items-center justify-center font-black shrink-0">
+                <CheckCircle2 className="w-6 h-6" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping" />
+                  <h2 className="font-extrabold text-sm sm:text-base text-white">
+                    Table {tableNumber}: Available to Serve Another Customer
+                  </h2>
+                </div>
+                <p className="text-xs text-emerald-300/90 mt-0.5 leading-relaxed">
+                  {justPaidSession 
+                    ? "✨ Payment confirmed & bill settled! This table is now free and ready to seat the next guest."
+                    : "🟢 Table is currently free and open. Guests can browse dishes and order directly below."}
+                </p>
+              </div>
+            </div>
+
+            {justPaidSession && (
+              <button
+                type="button"
+                onClick={handleResetForNextCustomer}
+                className="px-4 py-2.5 bg-emerald-400 hover:bg-emerald-300 text-slate-950 font-black rounded-xl text-xs uppercase tracking-wider transition-all shadow-md cursor-pointer flex items-center gap-1.5 shrink-0"
+              >
+                <RefreshCw className="w-3.5 h-3.5" />
+                <span>Serve Next Customer</span>
+              </button>
+            )}
+          </div>
+        )}
+
         {/* Dedicated Live Waiter Service Bar (Drink, Bill, Waiter, Cutlery) */}
         <div className="bg-slate-900/90 border border-slate-800 p-3 rounded-2xl shadow-md">
           <div className="flex items-center justify-between mb-2">
@@ -590,13 +696,23 @@ export const CustomerTableOrdering: React.FC<CustomerTableOrderingProps> = ({
                     </div>
                   </div>
 
-                  <button
-                    type="button"
-                    onClick={() => setIsLiveBillOpen(true)}
-                    className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white rounded-lg text-[11px] font-bold border border-slate-700 transition-all cursor-pointer shrink-0 ml-2"
-                  >
-                    View Bill ({formatCurrency(totalRunningBillAmount, profile.currencySymbol)})
-                  </button>
+                  <div className="flex items-center gap-2 shrink-0 ml-2">
+                    <button
+                      type="button"
+                      onClick={() => setIsLiveBillOpen(true)}
+                      className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white rounded-lg text-[11px] font-bold border border-slate-700 transition-all cursor-pointer"
+                    >
+                      View Bill ({formatCurrency(totalRunningBillAmount, profile.currencySymbol)})
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setIsPayBillModalOpen(true)}
+                      className="px-3 py-1 bg-amber-400 hover:bg-amber-300 text-slate-950 rounded-lg text-[11px] font-black transition-all cursor-pointer flex items-center gap-1 shadow-xs"
+                    >
+                      <CreditCard className="w-3.5 h-3.5" />
+                      <span>Pay Bill</span>
+                    </button>
+                  </div>
                 </div>
 
                 {/* Simulation Mode Status Switcher for Testing */}
@@ -1087,17 +1203,146 @@ export const CustomerTableOrdering: React.FC<CustomerTableOrderingProps> = ({
               )}
             </div>
 
-            <div className="p-4 bg-slate-950 border-t border-slate-800 flex gap-2">
+            <div className="p-4 bg-slate-950 border-t border-slate-800 flex flex-col sm:flex-row gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setIsLiveBillOpen(false);
+                  setIsPayBillModalOpen(true);
+                }}
+                disabled={activeTableOrders.length === 0}
+                className="flex-1 py-2.5 bg-amber-400 hover:bg-amber-300 disabled:opacity-40 text-slate-950 font-black rounded-xl text-xs uppercase tracking-wider transition-all shadow-md cursor-pointer flex items-center justify-center gap-1.5"
+              >
+                <CreditCard className="w-4 h-4" />
+                <span>Pay Bill & Settle Table</span>
+              </button>
+
               <button
                 type="button"
                 onClick={() => {
                   setIsLiveBillOpen(false);
                   handleTriggerServiceRequest('bill');
                 }}
-                className="flex-1 py-2.5 bg-amber-400 hover:bg-amber-300 text-slate-950 font-black rounded-xl text-xs uppercase tracking-wider transition-all shadow-md cursor-pointer flex items-center justify-center gap-1.5"
+                className="py-2.5 px-4 bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white font-bold rounded-xl text-xs uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-1.5 border border-slate-700"
               >
-                <Receipt className="w-4 h-4" />
-                <span>Call Waiter for Bill</span>
+                <Receipt className="w-4 h-4 text-amber-400" />
+                <span>Call Waiter</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Direct Customer Settle Bill & Free Table Modal */}
+      {isPayBillModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-slate-950/85 backdrop-blur-sm">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-md max-h-[92vh] flex flex-col shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+            
+            {/* Modal Header */}
+            <div className="p-4 bg-slate-950 text-white flex items-center justify-between border-b border-slate-800">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 bg-amber-400 text-slate-950 rounded-xl font-bold">
+                  <CreditCard className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-sm sm:text-base">Settle Bill • {tableNumber}</h3>
+                  <p className="text-[11px] text-slate-400">Complete payment & free table for next customer</p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setIsPayBillModalOpen(false)}
+                className="p-1.5 text-slate-400 hover:text-white rounded-lg cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-4 overflow-y-auto flex-1 space-y-4 text-xs">
+              {/* Order Total Highlight */}
+              <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 text-center space-y-1">
+                <span className="text-[11px] uppercase tracking-wider font-black text-slate-400">Total Amount Due</span>
+                <div className="text-2xl sm:text-3xl font-mono font-black text-amber-400">
+                  {formatCurrency(totalRunningBillAmount, profile.currencySymbol)}
+                </div>
+                <span className="text-[10px] text-slate-500">
+                  Includes {activeTableOrders.length} order tickets on {tableNumber}
+                </span>
+              </div>
+
+              {/* Select Payment Method */}
+              <div className="space-y-2">
+                <label className="text-[11px] font-bold text-slate-300 block">Choose Payment Method</label>
+                <div className="grid grid-cols-3 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setSelectedPaymentMethod('card')}
+                    className={`p-3 rounded-xl border flex flex-col items-center gap-1.5 text-center cursor-pointer transition-all ${
+                      selectedPaymentMethod === 'card'
+                        ? 'border-amber-400 bg-amber-950/40 text-amber-300 ring-1 ring-amber-400 font-black'
+                        : 'border-slate-800 bg-slate-950 text-slate-400 hover:text-slate-200'
+                    }`}
+                  >
+                    <CreditCard className="w-5 h-5 text-amber-400" />
+                    <span className="text-[11px]">Card</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setSelectedPaymentMethod('upi')}
+                    className={`p-3 rounded-xl border flex flex-col items-center gap-1.5 text-center cursor-pointer transition-all ${
+                      selectedPaymentMethod === 'upi'
+                        ? 'border-cyan-400 bg-cyan-950/40 text-cyan-300 ring-1 ring-cyan-400 font-black'
+                        : 'border-slate-800 bg-slate-950 text-slate-400 hover:text-slate-200'
+                    }`}
+                  >
+                    <QrCode className="w-5 h-5 text-cyan-400" />
+                    <span className="text-[11px]">UPI / QR</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setSelectedPaymentMethod('cash')}
+                    className={`p-3 rounded-xl border flex flex-col items-center gap-1.5 text-center cursor-pointer transition-all ${
+                      selectedPaymentMethod === 'cash'
+                        ? 'border-emerald-400 bg-emerald-950/40 text-emerald-300 ring-1 ring-emerald-400 font-black'
+                        : 'border-slate-800 bg-slate-950 text-slate-400 hover:text-slate-200'
+                    }`}
+                  >
+                    <Coins className="w-5 h-5 text-emerald-400" />
+                    <span className="text-[11px]">Cash</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Payment Details Note */}
+              <div className="p-3 bg-emerald-950/40 border border-emerald-800/40 rounded-xl text-emerald-300 text-[11px] flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-400" />
+                <span>
+                  Completing this payment will mark the bill as paid in Cloud Firestore and free <strong>{tableNumber}</strong> to <strong>Available</strong> status for the next customer.
+                </span>
+              </div>
+            </div>
+
+            {/* Modal Actions */}
+            <div className="p-4 bg-slate-950 border-t border-slate-800 flex gap-2">
+              <button
+                type="button"
+                onClick={() => setIsPayBillModalOpen(false)}
+                className="py-2.5 px-4 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold rounded-xl text-xs transition-colors cursor-pointer"
+              >
+                Cancel
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleSettlePaymentAndFreeTable(selectedPaymentMethod)}
+                className="flex-1 py-2.5 bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 text-slate-950 font-black rounded-xl text-xs uppercase tracking-wider transition-all shadow-lg cursor-pointer flex items-center justify-center gap-1.5"
+              >
+                <CheckCircle2 className="w-4 h-4" />
+                <span>Pay {formatCurrency(totalRunningBillAmount, profile.currencySymbol)} & Free Table</span>
               </button>
             </div>
           </div>

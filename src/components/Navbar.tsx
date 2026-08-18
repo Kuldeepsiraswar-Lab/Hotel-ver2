@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState } from 'react';
 import { 
   Menu,
   UtensilsCrossed, 
@@ -10,26 +10,15 @@ import {
   Flame, 
   Settings, 
   Cloud, 
-  CloudCheck, 
-  RefreshCw, 
-  QrCode, 
-  Lock, 
-  User, 
-  LogOut, 
   ChevronDown, 
-  KeyRound, 
-  ShieldCheck,
-  Users,
-  Crown,
   Sun,
-  Moon,
-  ShieldAlert
+  Moon
 } from 'lucide-react';
 import { RestaurantProfile, AppNotification, BillOrder, StaffUser } from '../types';
 import { NotificationMenu } from './NotificationMenu';
 import { NavDrawer } from './NavDrawer';
 import { useTheme } from '../context/ThemeContext';
-import { isKitchenStaff, canAccessSettings, canAccessStaffManagement } from '../utils/permissions';
+import { isKitchenStaff, canAccessSettings } from '../utils/permissions';
 
 export type NavTab = 'pos' | 'kitchen' | 'invoices' | 'expenses' | 'financials' | 'menu';
 
@@ -82,45 +71,10 @@ export const Navbar: React.FC<NavbarProps> = ({
   onMarkAllAsRead,
   onClearAllNotifications,
 }) => {
-  const { theme, isDark, toggleTheme } = useTheme();
+  const { isDark, toggleTheme } = useTheme();
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
-  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
-  const userMenuRef = useRef<HTMLDivElement>(null);
 
   const isKitchen = isKitchenStaff(currentUser);
-
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (userMenuRef.current && !userMenuRef.current.contains(e.target as Node)) {
-        setIsUserMenuOpen(false);
-      }
-    };
-    if (isUserMenuOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
-    }
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [isUserMenuOpen]);
-
-  const getRoleBadge = (role?: string) => {
-    switch (role) {
-      case 'owner':
-        return { label: 'Admin', icon: '👑', color: 'bg-amber-400/20 text-amber-300 border-amber-400/30' };
-      case 'manager':
-        return { label: 'Manager', icon: '📋', color: 'bg-indigo-400/20 text-indigo-300 border-indigo-400/30' };
-      case 'cashier':
-        return { label: 'Cashier', icon: '💳', color: 'bg-emerald-400/20 text-emerald-300 border-emerald-400/30' };
-      case 'kitchen':
-        return { label: 'Kitchen Lead', icon: '🔥', color: 'bg-rose-500/20 text-rose-300 border-rose-500/30' };
-      case 'waiter':
-        return { label: 'Waiter', icon: '🍽️', color: 'bg-sky-400/20 text-sky-300 border-sky-400/30' };
-      default:
-        return { label: 'Staff', icon: '👤', color: 'bg-slate-700 text-slate-300 border-slate-600' };
-    }
-  };
-
-  const roleInfo = getRoleBadge(currentUser?.role);
 
   const tabsConfig: Record<NavTab, { label: string; icon: React.ElementType; badge?: number; badgeColor?: string }> = {
     pos: { label: 'POS Billing', icon: Receipt, badge: openOrdersCount > 0 ? openOrdersCount : undefined, badgeColor: 'bg-amber-500 text-slate-950' },
@@ -289,153 +243,6 @@ export const Navbar: React.FC<NavbarProps> = ({
                   <Settings className="w-4 h-4" />
                 </button>
               )}
-
-              {/* Staff User / Login Profile Button */}
-              <div className="relative" ref={userMenuRef}>
-                {currentUser ? (
-                  <button
-                    type="button"
-                    id="navbar-staff-profile-button"
-                    onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
-                    className={`px-2.5 py-1.5 border rounded-xl transition-all flex items-center gap-2 cursor-pointer shadow-xs ${
-                      isKitchen 
-                        ? 'bg-rose-950/40 hover:bg-rose-900/50 border-rose-800/80 text-rose-200' 
-                        : 'bg-slate-800/90 hover:bg-slate-700/90 border-slate-700'
-                    }`}
-                  >
-                    <div className={`w-6 h-6 rounded-lg flex items-center justify-center font-bold text-xs ${
-                      isKitchen ? 'bg-rose-500 text-white' : 'bg-amber-400 text-slate-950'
-                    }`}>
-                      {roleInfo.icon}
-                    </div>
-                    <div className="text-left hidden lg:block">
-                      <p className="text-xs font-extrabold text-white leading-none truncate max-w-[100px]">
-                        {currentUser.displayName.split(' ')[0]}
-                      </p>
-                      <span className={`text-[10px] font-medium ${isKitchen ? 'text-rose-300' : 'text-amber-300/90'}`}>
-                        {roleInfo.label}
-                      </span>
-                    </div>
-                    <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    id="navbar-login-button"
-                    onClick={onOpenLogin}
-                    className="px-3 py-1.5 bg-amber-400 hover:bg-amber-300 text-slate-950 font-black rounded-xl text-xs transition-all shadow-xs flex items-center gap-1.5 cursor-pointer"
-                  >
-                    <Lock className="w-3.5 h-3.5" />
-                    <span>Login</span>
-                  </button>
-                )}
-
-                {/* User Dropdown Menu */}
-                {isUserMenuOpen && currentUser && (
-                  <div className="absolute right-0 top-12 z-50 w-64 bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl overflow-hidden p-2 animate-in fade-in zoom-in-95 duration-150 text-slate-100">
-                    <div className="p-3 bg-slate-950 rounded-xl border border-slate-800 mb-2">
-                      <div className="flex items-center gap-2.5">
-                        <div className={`w-9 h-9 rounded-xl flex items-center justify-center font-black text-sm ${
-                          isKitchen ? 'bg-rose-500 text-white' : 'bg-amber-400 text-slate-950'
-                        }`}>
-                          {roleInfo.icon}
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <p className="text-xs font-black text-white truncate">
-                            {currentUser.displayName}
-                          </p>
-                          <p className="text-[11px] text-slate-400 truncate">
-                            {currentUser.email}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="mt-2.5 pt-2 border-t border-slate-800/80 flex items-center justify-between text-[10px]">
-                        <span className="text-slate-400">Station Role</span>
-                        <span className={`px-2 py-0.5 rounded-full font-bold border ${roleInfo.color}`}>
-                          {roleInfo.label}
-                        </span>
-                      </div>
-                      {isKitchen && (
-                        <div className="mt-2 p-1.5 bg-rose-950/50 border border-rose-800/60 rounded-lg text-[10px] text-rose-300 flex items-center gap-1.5">
-                          <ShieldAlert className="w-3.5 h-3.5 text-rose-400 shrink-0" />
-                          <span>Dedicated Kitchen Display Station • Other tabs locked</span>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Actions */}
-                    <div className="space-y-1">
-                      {!isKitchen && canAccessStaffManagement(currentUser) && onOpenStaffManagement && (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setIsUserMenuOpen(false);
-                            onOpenStaffManagement();
-                          }}
-                          className="w-full px-3 py-2 rounded-xl text-xs font-semibold text-slate-300 hover:text-white hover:bg-slate-800 flex items-center gap-2.5 transition-colors cursor-pointer"
-                        >
-                          <Users className="w-4 h-4 text-amber-400" />
-                          <span>Staff Roster & Admin</span>
-                        </button>
-                      )}
-
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setIsUserMenuOpen(false);
-                          onLockTerminal();
-                        }}
-                        className="w-full px-3 py-2 rounded-xl text-xs font-semibold text-slate-300 hover:text-white hover:bg-slate-800 flex items-center gap-2.5 transition-colors cursor-pointer"
-                      >
-                        <Lock className="w-4 h-4 text-amber-400" />
-                        <span>Lock Terminal Screen</span>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setIsUserMenuOpen(false);
-                          onOpenLogin();
-                        }}
-                        className="w-full px-3 py-2 rounded-xl text-xs font-semibold text-slate-300 hover:text-white hover:bg-slate-800 flex items-center gap-2.5 transition-colors cursor-pointer"
-                      >
-                        <KeyRound className="w-4 h-4 text-indigo-400" />
-                        <span>Switch Staff / Enter PIN</span>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => {
-                          toggleTheme();
-                        }}
-                        className="w-full px-3 py-2 rounded-xl text-xs font-semibold text-slate-300 hover:text-white hover:bg-slate-800 flex items-center justify-between transition-colors cursor-pointer"
-                      >
-                        <div className="flex items-center gap-2.5">
-                          {isDark ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-indigo-400" />}
-                          <span>Theme Mode</span>
-                        </div>
-                        <span className="text-[10px] px-2 py-0.5 rounded-md bg-slate-800 border border-slate-700 text-slate-300 capitalize font-mono">
-                          {isDark ? 'Dark' : 'Light'}
-                        </span>
-                      </button>
-
-                      <div className="pt-1 border-t border-slate-800">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setIsUserMenuOpen(false);
-                            onLogout();
-                          }}
-                          className="w-full px-3 py-2 rounded-xl text-xs font-semibold text-red-400 hover:text-red-300 hover:bg-red-500/10 flex items-center gap-2.5 transition-colors cursor-pointer"
-                        >
-                          <LogOut className="w-4 h-4" />
-                          <span>Sign Out / End Shift</span>
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
             </div>
           </div>
         </div>

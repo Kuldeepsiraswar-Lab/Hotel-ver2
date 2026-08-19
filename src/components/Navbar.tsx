@@ -35,6 +35,8 @@ interface NavbarProps {
   onOpenLogin: () => void;
   onLockTerminal: () => void;
   onLogout: () => void;
+  onOpenDailySummary?: () => void;
+  onCloseTerminal?: () => void;
   onViewOrder: (order: BillOrder) => void;
   onMarkAsRead: (notificationId: string) => void;
   onMarkAllAsRead: () => void;
@@ -60,6 +62,8 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenLogin,
   onLockTerminal,
   onLogout,
+  onOpenDailySummary,
+  onCloseTerminal,
   onViewOrder,
   onMarkAsRead,
   onMarkAllAsRead,
@@ -221,6 +225,8 @@ export const Navbar: React.FC<NavbarProps> = ({
         onOpenLogin={onOpenLogin}
         onLockTerminal={onLockTerminal}
         onLogout={onLogout}
+        onOpenDailySummary={onOpenDailySummary}
+        onCloseTerminal={onCloseTerminal}
       />
     </>
   );

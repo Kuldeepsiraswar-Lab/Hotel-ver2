@@ -51,7 +51,7 @@ interface KitchenViewProps {
   onViewInvoice?: (order: BillOrder) => void;
 }
 
-type KitchenTabFilter = 'active' | 'pending' | 'preparing' | 'ready' | 'hold' | 'completed';
+type KitchenTabFilter = 'active' | 'pending' | 'urgent' | 'preparing' | 'ready' | 'hold' | 'completed';
 type OrderTypeFilter = 'all' | 'dine-in' | 'takeout' | 'delivery' | 'catering';
 
 export const KitchenView: React.FC<KitchenViewProps> = ({
@@ -190,6 +190,10 @@ export const KitchenView: React.FC<KitchenViewProps> = ({
       // Tab filter
       if (tabFilter === 'active') {
         if (isCompleted || status === 'cancelled') return false;
+      } else if (tabFilter === 'urgent') {
+        const createdTime = new Date(order.createdAt).getTime();
+        const diffMins = Math.floor(Math.max(0, (currentTime.getTime() - createdTime) / 1000) / 60);
+        if (isCompleted || isHold || status === 'cancelled' || diffMins < 20) return false;
       } else if (tabFilter === 'hold') {
         if (!isHold || isCompleted) return false;
       } else if (tabFilter === 'pending') {
@@ -259,6 +263,7 @@ export const KitchenView: React.FC<KitchenViewProps> = ({
     let ready = 0;
     let completed = 0;
     let hold = 0;
+    let urgent = 0;
 
     orders.forEach(ord => {
       if (ord.isArchived || ord.paymentStatus === 'cancelled') return;
@@ -273,6 +278,13 @@ export const KitchenView: React.FC<KitchenViewProps> = ({
 
       if (isHold) {
         hold++;
+      }
+
+      // Check urgent overdue threshold (20+ minutes pending/active non-hold)
+      const createdTime = new Date(ord.createdAt).getTime();
+      const diffMins = Math.floor(Math.max(0, (currentTime.getTime() - createdTime) / 1000) / 60);
+      if (!isHold && diffMins >= 20) {
+        urgent++;
       }
 
       if (st === 'pending') {
@@ -290,9 +302,10 @@ export const KitchenView: React.FC<KitchenViewProps> = ({
       preparing,
       ready,
       hold,
-      completed
+      completed,
+      urgent
     };
-  }, [orders]);
+  }, [orders, currentTime]);
 
   // Aggregated Prep Summary across all ACTIVE NON-HOLD orders (Pending + Preparing)
   const prepSummary = useMemo(() => {
@@ -538,6 +551,19 @@ export const KitchenView: React.FC<KitchenViewProps> = ({
               <span className="text-amber-400 font-bold">
                 {counts.active} Active Ticket{counts.active !== 1 ? 's' : ''}
               </span>
+              {counts.urgent > 0 && (
+                <>
+                  <span>•</span>
+                  <button
+                    type="button"
+                    onClick={() => setTabFilter('urgent')}
+                    className="text-white font-black flex items-center gap-1.5 bg-red-600 border border-red-400 px-2.5 py-0.5 rounded-md animate-urgent-banner shadow-sm cursor-pointer hover:bg-red-500 transition-colors"
+                  >
+                    <AlertTriangle className="w-3.5 h-3.5 animate-bounce text-amber-300" />
+                    <span>{counts.urgent} Urgent (&gt;20m)</span>
+                  </button>
+                </>
+              )}
               {counts.hold > 0 && (
                 <>
                   <span>•</span>
@@ -770,6 +796,28 @@ export const KitchenView: React.FC<KitchenViewProps> = ({
             )}
           </button>
 
+          {/* Urgent Overdue Filter Tab */}
+          <button
+            id="kitchen-tab-urgent"
+            type="button"
+            onClick={() => setTabFilter('urgent')}
+            className={`px-3.5 py-2 text-xs font-black rounded-xl transition-all flex items-center gap-1.5 cursor-pointer shrink-0 ${
+              tabFilter === 'urgent'
+                ? 'bg-red-600 text-white shadow-md ring-2 ring-red-400'
+                : counts.urgent > 0
+                ? 'bg-red-500/15 text-red-600 dark:text-red-400 border border-red-500/30 hover:bg-red-500/25 animate-urgent-banner'
+                : 'bg-red-50 dark:bg-red-950/20 text-red-700 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-950/40'
+            }`}
+          >
+            <AlertTriangle className={`w-3.5 h-3.5 ${counts.urgent > 0 ? 'animate-bounce text-amber-300' : ''}`} />
+            <span>Urgent (&gt;20m)</span>
+            {counts.urgent > 0 && (
+              <span className="ml-0.5 px-1.5 py-0.2 rounded-full text-[10px] bg-white text-red-700 font-black shadow-xs animate-ping">
+                {counts.urgent}
+              </span>
+            )}
+          </button>
+
           {/* Standby / Hold Filter Tab */}
           <button
             type="button"
@@ -917,6 +965,8 @@ export const KitchenView: React.FC<KitchenViewProps> = ({
           <h3 className="text-base font-extrabold text-slate-900 dark:text-slate-100">
             {tabFilter === 'active' 
               ? 'All Kitchen Orders Cleared!' 
+              : tabFilter === 'urgent'
+              ? 'No Urgent Overdue Orders'
               : tabFilter === 'hold' 
               ? 'No Orders on Standby' 
               : tabFilter === 'completed'
@@ -926,6 +976,8 @@ export const KitchenView: React.FC<KitchenViewProps> = ({
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-sm">
             {tabFilter === 'active'
               ? 'The kitchen queue is currently clear. New dine-in tickets and QR self-orders will appear here in real-time with an acoustic alert.'
+              : tabFilter === 'urgent'
+              ? 'Great job! All active kitchen tickets are currently within the 20-minute SLA prep threshold.'
               : tabFilter === 'hold'
               ? 'All pending orders are actively cooking. Use the "Hold" button on any pending ticket to place it on standby.'
               : tabFilter === 'completed'
@@ -960,6 +1012,7 @@ export const KitchenView: React.FC<KitchenViewProps> = ({
             const preparedItemsCount = order.items.reduce((acc, i) => acc + (preparedMap[i.id] ? i.quantity : 0), 0);
             const isAllItemsPrepared = preparedItemsCount === totalItemsCount && totalItemsCount > 0;
             const isQR = order.serverName === 'Table QR Self-Order' || (!order.serverName && order.tableNumber);
+            const isUrgent = !isFinalized && !isHold && elapsed.mins >= 20;
 
             // Border and Header Color styling by status / urgency / hold
             let cardBorder = 'border-slate-200 dark:border-slate-800';
@@ -974,29 +1027,25 @@ export const KitchenView: React.FC<KitchenViewProps> = ({
               cardBorder = 'border-amber-500/80 dark:border-amber-500/70 border-dashed ring-4 ring-amber-400/20';
               headerBg = 'bg-slate-950 text-amber-200 border-b border-amber-500/40';
               statusBadgeColor = 'bg-amber-500 text-slate-950 font-black';
+            } else if (isUrgent) {
+              cardBorder = 'animate-urgent-card border-red-500 ring-4 ring-red-500/50 shadow-2xl shadow-red-500/30';
+              headerBg = 'bg-gradient-to-r from-red-950 via-red-900 to-red-950 text-white border-b border-red-500/50';
+              statusBadgeColor = 'bg-red-600 text-white font-black animate-urgent-badge';
             } else if (status === 'ready') {
               cardBorder = 'border-emerald-500 dark:border-emerald-500/80 ring-2 ring-emerald-500/20';
               headerBg = 'bg-emerald-900 dark:bg-emerald-950 text-emerald-50';
               statusBadgeColor = 'bg-emerald-400 text-slate-950';
             } else if (status === 'preparing') {
-              cardBorder = elapsed.colorCategory === 'red' 
-                ? 'border-red-500 dark:border-red-500 ring-2 ring-red-500/30 shadow-red-500/10' 
-                : elapsed.colorCategory === 'yellow'
+              cardBorder = elapsed.colorCategory === 'yellow'
                 ? 'border-amber-500/80 dark:border-amber-400/80 ring-2 ring-amber-400/20'
                 : 'border-blue-500/80 dark:border-blue-500/80 ring-1 ring-blue-500/20';
-              headerBg = elapsed.colorCategory === 'red' 
-                ? 'bg-red-950 text-red-100' 
-                : 'bg-blue-950 text-blue-100';
+              headerBg = 'bg-blue-950 text-blue-100';
               statusBadgeColor = 'bg-blue-400 text-slate-950';
             } else if (status === 'pending') {
-              cardBorder = elapsed.colorCategory === 'red'
-                ? 'border-red-500 ring-2 ring-red-500/40 shadow-lg shadow-red-500/10'
-                : elapsed.colorCategory === 'yellow'
+              cardBorder = elapsed.colorCategory === 'yellow'
                 ? 'border-amber-400 dark:border-amber-400 ring-2 ring-amber-400/30'
                 : 'border-emerald-500/50 dark:border-emerald-500/40 ring-1 ring-emerald-500/20';
-              headerBg = elapsed.colorCategory === 'red'
-                ? 'bg-red-950 text-red-100'
-                : 'bg-slate-900 text-white';
+              headerBg = 'bg-slate-900 text-white';
               statusBadgeColor = 'bg-amber-400 text-slate-950 animate-pulse';
             }
 
@@ -1007,6 +1056,19 @@ export const KitchenView: React.FC<KitchenViewProps> = ({
                   isHold ? 'bg-amber-50/20 dark:bg-amber-950/10' : isFinalized ? 'opacity-95' : ''
                 }`}
               >
+                {/* Urgent Overdue (>20 min) Flashing Banner */}
+                {isUrgent && (
+                  <div className="bg-red-600 text-white px-3.5 py-1.5 flex items-center justify-between gap-2 text-xs font-black tracking-wider uppercase animate-urgent-banner shadow-md">
+                    <div className="flex items-center gap-1.5">
+                      <AlertTriangle className="w-4 h-4 animate-bounce shrink-0 text-amber-300" />
+                      <span className="animate-pulse">⚠️ URGENT: PENDING OVER 20 MIN ({elapsed.mins}m)</span>
+                    </div>
+                    <span className="bg-white text-red-700 px-2 py-0.5 rounded-md text-[10px] font-black tracking-widest animate-pulse shadow-xs">
+                      EXPEDITE
+                    </span>
+                  </div>
+                )}
+
                 {/* Hold / Standby Banner on Top if Held */}
                 {isHold && (
                   <div className="bg-amber-500 text-slate-950 px-3.5 py-1.5 flex items-center justify-between gap-2 text-xs font-black tracking-wide shadow-xs animate-in fade-in duration-150">
@@ -1062,6 +1124,13 @@ export const KitchenView: React.FC<KitchenViewProps> = ({
                         </span>
                       )}
 
+                      {isUrgent && (
+                        <span className="px-2 py-0.5 bg-red-600 text-white font-black text-[10px] rounded-full uppercase tracking-wider animate-urgent-badge flex items-center gap-1 shadow-sm">
+                          <Flame className="w-3 h-3 text-amber-300 animate-bounce" />
+                          URGENT
+                        </span>
+                      )}
+
                       {isHold && (
                         <span className="px-2 py-0.5 bg-amber-400 text-slate-950 font-black text-[10px] rounded-full uppercase tracking-wider">
                           PAUSED
@@ -1084,8 +1153,8 @@ export const KitchenView: React.FC<KitchenViewProps> = ({
                         className={`flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-mono font-black border transition-all ${
                           isHold 
                             ? 'bg-amber-950 text-amber-300 border-amber-700/60'
-                            : elapsed.colorCategory === 'red'
-                            ? 'bg-red-600 text-white border-red-400 shadow-md animate-pulse'
+                            : isUrgent
+                            ? 'bg-red-600 text-white border-red-300 shadow-md animate-urgent-badge'
                             : elapsed.colorCategory === 'yellow'
                             ? 'bg-amber-400 text-slate-950 font-black border-amber-300 shadow-xs'
                             : 'bg-emerald-600 text-white font-bold border-emerald-400/80 shadow-xs'
@@ -1094,7 +1163,7 @@ export const KitchenView: React.FC<KitchenViewProps> = ({
                         {isHold ? (
                           <Pause className="w-3.5 h-3.5 text-amber-400" />
                         ) : (
-                          <Timer className={`w-3.5 h-3.5 ${elapsed.colorCategory === 'red' ? 'animate-spin' : ''}`} />
+                          <Timer className={`w-3.5 h-3.5 ${isUrgent ? 'animate-spin text-amber-300' : ''}`} />
                         )}
                         <span>{isHold ? `Held (${elapsed.timeText})` : elapsed.timeText}</span>
                       </div>

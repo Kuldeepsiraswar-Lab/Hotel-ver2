@@ -2,6 +2,53 @@
 
 @custom-variant dark (&:where(.dark, .dark *));
 
+@keyframes urgent-card-flash {
+  0%, 100% {
+    border-color: rgba(239, 68, 68, 1);
+    box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.6), 0 10px 25px -5px rgba(239, 68, 68, 0.4);
+    transform: scale(1);
+  }
+  50% {
+    border-color: rgba(248, 113, 113, 0.6);
+    box-shadow: 0 0 0 7px rgba(239, 68, 68, 0.15), 0 4px 12px rgba(239, 68, 68, 0.2);
+    transform: scale(1.008);
+  }
+}
+
+@keyframes urgent-banner-flash {
+  0%, 100% {
+    background-color: #dc2626;
+    color: #ffffff;
+  }
+  50% {
+    background-color: #991b1b;
+    color: #fef2f2;
+  }
+}
+
+@keyframes urgent-badge-glow {
+  0%, 100% {
+    background-color: #dc2626;
+    box-shadow: 0 0 14px rgba(239, 68, 68, 0.9);
+  }
+  50% {
+    background-color: #b91c1c;
+    box-shadow: 0 0 4px rgba(239, 68, 68, 0.4);
+  }
+}
+
+.animate-urgent-card {
+  animation: urgent-card-flash 1.4s ease-in-out infinite;
+}
+
+.animate-urgent-banner {
+  animation: urgent-banner-flash 1s ease-in-out infinite;
+}
+
+.animate-urgent-badge {
+  animation: urgent-badge-glow 1.2s ease-in-out infinite;
+}
+
 @layer utilities {
   @media print {
     body {

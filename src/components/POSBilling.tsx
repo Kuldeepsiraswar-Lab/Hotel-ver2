@@ -21,7 +21,7 @@ import {
   Clock
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
-import { MenuItem, OrderItem, BillOrder, RestaurantProfile, OrderType, PaymentMethod, PaymentStatus } from '../types';
+import { MenuItem, OrderItem, BillOrder, RestaurantProfile, OrderType, PaymentMethod, PaymentStatus, StaffUser } from '../types';
 import { formatCurrency, generateId, generateNextReceiptNumber } from '../utils/formatters';
 
 interface POSBillingProps {
@@ -29,9 +29,12 @@ interface POSBillingProps {
   existingOrders: BillOrder[];
   profile: RestaurantProfile;
   categories?: string[];
+  currentUser?: StaffUser | null;
   onSaveOrder: (order: BillOrder) => void;
   onViewInvoice: (order: BillOrder) => void;
   onOpenTableQR?: () => void;
+  onCloseTerminal?: () => void;
+  onOpenDailySummary?: () => void;
 }
 
 const TABLES = [
@@ -45,9 +48,12 @@ export const POSBilling: React.FC<POSBillingProps> = ({
   existingOrders,
   profile,
   categories: passedCategories,
+  currentUser,
   onSaveOrder,
   onViewInvoice,
   onOpenTableQR,
+  onCloseTerminal,
+  onOpenDailySummary,
 }) => {
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -369,19 +375,42 @@ export const POSBilling: React.FC<POSBillingProps> = ({
             </div>
           )}
 
-          {/* Server Attribution */}
-          <div className="flex items-center gap-1.5 ml-auto sm:ml-0">
-            <span className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 font-medium hidden sm:inline">Server:</span>
-            <select
-              value={serverName}
-              onChange={(e) => setServerName(e.target.value)}
-              className="text-xs bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1 font-semibold text-slate-800 dark:text-slate-200 focus:outline-none"
-            >
-              <option value="Marco">Marco V.</option>
-              <option value="Giulia">Giulia R.</option>
-              <option value="Chef Antonio">Antonio (Chef)</option>
-              <option value="Front Desk">Front Desk</option>
-            </select>
+          {/* Server Attribution & Terminal Closeout Button */}
+          <div className="flex items-center gap-2 ml-auto sm:ml-0">
+            <div className="flex items-center gap-1.5">
+              <span className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 font-medium hidden sm:inline">Server:</span>
+              <select
+                value={serverName}
+                onChange={(e) => setServerName(e.target.value)}
+                className="text-xs bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1 font-semibold text-slate-800 dark:text-slate-200 focus:outline-none"
+              >
+                <option value="Marco">Marco V.</option>
+                <option value="Giulia">Giulia R.</option>
+                <option value="Chef Antonio">Antonio (Chef)</option>
+                <option value="Front Desk">Front Desk</option>
+              </select>
+            </div>
+
+            {/* Daily Sales Summary / Close POS Terminal Action Button */}
+            {(onCloseTerminal || onOpenDailySummary) && (
+              <button
+                type="button"
+                id="pos-close-terminal-btn"
+                onClick={() => {
+                  if (onCloseTerminal) {
+                    onCloseTerminal();
+                  } else if (onOpenDailySummary) {
+                    onOpenDailySummary();
+                  }
+                }}
+                title="Daily Sales Summary & Closeout POS Terminal"
+                className="px-2.5 py-1 bg-amber-500 hover:bg-amber-400 text-slate-950 rounded-lg text-xs font-black transition-all shadow-xs flex items-center gap-1.5 cursor-pointer shrink-0"
+              >
+                <DollarSign className="w-3.5 h-3.5 stroke-[2.5]" />
+                <span className="hidden md:inline">Daily Sales / Close Terminal</span>
+                <span className="md:hidden">Close POS</span>
+              </button>
+            )}
           </div>
         </div>
 

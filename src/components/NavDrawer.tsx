@@ -18,12 +18,13 @@ import {
   Moon, 
   Cloud, 
   ChevronRight,
-  ShieldAlert
+  ShieldAlert,
+  DollarSign
 } from 'lucide-react';
 import { RestaurantProfile, StaffUser } from '../types';
 import { NavTab } from './Navbar';
 import { useTheme } from '../context/ThemeContext';
-import { isKitchenStaff, canAccessSettings, canAccessStaffManagement, canAccessTableQR, canUserAccessTab } from '../utils/permissions';
+import { isKitchenStaff, canAccessSettings, canAccessStaffManagement, canAccessTableQR, canUserAccessTab, isManagerOrOwner, isAdminOrOwner } from '../utils/permissions';
 
 interface NavDrawerProps {
   isOpen: boolean;
@@ -44,6 +45,8 @@ interface NavDrawerProps {
   onOpenLogin: () => void;
   onLockTerminal: () => void;
   onLogout: () => void;
+  onOpenDailySummary?: () => void;
+  onCloseTerminal?: () => void;
 }
 
 export const NavDrawer: React.FC<NavDrawerProps> = ({
@@ -65,6 +68,8 @@ export const NavDrawer: React.FC<NavDrawerProps> = ({
   onOpenLogin,
   onLockTerminal,
   onLogout,
+  onOpenDailySummary,
+  onCloseTerminal,
 }) => {
   const { isDark, toggleTheme } = useTheme();
   const isKitchen = isKitchenStaff(currentUser);
@@ -113,6 +118,15 @@ export const NavDrawer: React.FC<NavDrawerProps> = ({
 
   const navItems = [
     {
+      id: 'pos' as NavTab,
+      label: 'POS Billing Terminal',
+      subLabel: 'Dine-in tables, takeout, split bills & cash register',
+      icon: Receipt,
+      badge: openOrdersCount > 0 ? `${openOrdersCount} Open` : undefined,
+      badgeColor: 'bg-amber-500 text-slate-950',
+      isAllowedForKitchen: false,
+    },
+    {
       id: 'kitchen' as NavTab,
       label: 'Kitchen Display (KDS)',
       subLabel: 'Live cooking line, prep summary, timers & KOT',
@@ -122,12 +136,19 @@ export const NavDrawer: React.FC<NavDrawerProps> = ({
       isAllowedForKitchen: true,
     },
     {
-      id: 'pos' as NavTab,
-      label: 'POS Billing Terminal',
-      subLabel: 'Dine-in tables, takeout, split bills & cash register',
-      icon: Receipt,
-      badge: openOrdersCount > 0 ? `${openOrdersCount} Open` : undefined,
-      badgeColor: 'bg-amber-500 text-slate-950',
+      id: 'menu' as NavTab,
+      label: 'Menu & Recipe Costing',
+      subLabel: 'Dishes catalog, food cost % & pricing management',
+      icon: ChefHat,
+      isAllowedForKitchen: false,
+    },
+    {
+      id: 'tableqr' as NavTab,
+      label: 'Table QR Self-Order',
+      subLabel: 'Digital table standees, guest Wi-Fi & customer ordering',
+      icon: QrCode,
+      badge: 'QR Menu',
+      badgeColor: 'bg-indigo-500 text-white font-black',
       isAllowedForKitchen: false,
     },
     {
@@ -151,22 +172,6 @@ export const NavDrawer: React.FC<NavDrawerProps> = ({
       label: 'P&L Health & Analytics',
       subLabel: 'Net profit margins, revenue trends & cost breakdown',
       icon: TrendingUp,
-      isAllowedForKitchen: false,
-    },
-    {
-      id: 'menu' as NavTab,
-      label: 'Menu & Recipe Costing',
-      subLabel: 'Dishes catalog, food cost % & pricing management',
-      icon: ChefHat,
-      isAllowedForKitchen: false,
-    },
-    {
-      id: 'tableqr' as NavTab,
-      label: 'Table QR Self-Order',
-      subLabel: 'Digital table standees, guest Wi-Fi & customer ordering',
-      icon: QrCode,
-      badge: 'QR Menu',
-      badgeColor: 'bg-indigo-500 text-white font-black',
       isAllowedForKitchen: false,
     },
   ];
@@ -271,9 +276,13 @@ export const NavDrawer: React.FC<NavDrawerProps> = ({
                   type="button"
                   onClick={() => {
                     onClose();
-                    onLockTerminal();
+                    if ((isAdminOrOwner(currentUser) || isManagerOrOwner(currentUser)) && onCloseTerminal) {
+                      onCloseTerminal();
+                    } else {
+                      onLockTerminal();
+                    }
                   }}
-                  title="Lock Terminal Screen"
+                  title="Lock & Close Terminal Screen"
                   className="p-2 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-amber-400 rounded-xl transition-colors text-xs font-bold flex items-center gap-1 cursor-pointer border border-slate-700/60"
                 >
                   <Lock className="w-3.5 h-3.5" />
@@ -470,6 +479,29 @@ export const NavDrawer: React.FC<NavDrawerProps> = ({
                 </button>
               )}
 
+              {/* Daily Sales & Closeout Summary Button */}
+              {!isKitchen && (
+                <button
+                  type="button"
+                  id="drawer-daily-sales-btn"
+                  onClick={() => {
+                    onClose();
+                    if (onOpenDailySummary) {
+                      onOpenDailySummary();
+                    } else if (onCloseTerminal) {
+                      onCloseTerminal();
+                    }
+                  }}
+                  className="p-2.5 bg-slate-950/70 hover:bg-slate-800 border border-slate-800 rounded-xl text-left transition-all cursor-pointer group flex flex-col justify-between"
+                >
+                  <DollarSign className="w-4 h-4 text-amber-400 mb-1.5 group-hover:scale-110 transition-transform stroke-[2.5]" />
+                  <div>
+                    <span className="text-xs font-bold text-slate-200 block">Daily Sales</span>
+                    <span className="text-[10px] text-slate-400">Closeout & Z-Report</span>
+                  </div>
+                </button>
+              )}
+
               {!isKitchen && canAccessSettings(currentUser) && (
                 <button
                   type="button"
@@ -526,18 +558,27 @@ export const NavDrawer: React.FC<NavDrawerProps> = ({
             </button>
           </div>
 
-          {/* Sign Out / End Shift */}
+          {/* Sign Out / End Shift / Close POS Terminal */}
           {currentUser && (
             <button
               type="button"
+              id="drawer-sign-out-btn"
               onClick={() => {
                 onClose();
-                onLogout();
+                if ((isAdminOrOwner(currentUser) || isManagerOrOwner(currentUser)) && onCloseTerminal) {
+                  onCloseTerminal();
+                } else {
+                  onLogout();
+                }
               }}
               className="w-full py-2 px-3 text-xs font-bold text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer"
             >
               <LogOut className="w-4 h-4" />
-              <span>Sign Out / End Shift</span>
+              <span>
+                {isAdminOrOwner(currentUser) || isManagerOrOwner(currentUser)
+                  ? 'Close POS Terminal / Sign Out'
+                  : 'Sign Out / End Shift'}
+              </span>
             </button>
           )}
         </div>

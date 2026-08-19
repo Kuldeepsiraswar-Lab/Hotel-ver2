@@ -31,11 +31,12 @@ import { TableQRView } from './components/TableQRView';
 import { CustomerTableOrdering } from './components/CustomerTableOrdering';
 import { LoginModal } from './components/LoginModal';
 import { StaffManagementModal } from './components/StaffManagementModal';
+import { DailySalesSummaryModal } from './components/DailySalesSummaryModal';
 import { CloudDatabaseService } from './firebase';
 import { playOrderChimeSound, playKitchenBell } from './utils/sound';
 import { generateId } from './utils/formatters';
 import { CheckCircle2, Cloud, RefreshCw, Bell, QrCode, Volume2, Shield } from 'lucide-react';
-import { isKitchenStaff, canUserAccessTab, canAccessSettings, canAccessStaffManagement, canAccessTableQR } from './utils/permissions';
+import { isKitchenStaff, canUserAccessTab, canAccessSettings, canAccessStaffManagement, canAccessTableQR, isAdminOrOwner, isManagerOrOwner } from './utils/permissions';
 
 const STORAGE_KEYS = {
   PROFILE: 'ristorante_profile_v1',
@@ -120,6 +121,8 @@ export default function App() {
   const [isLoginModalOpen, setIsLoginModalOpen] = useState<boolean>(true);
   const [isTerminalLocked, setIsTerminalLocked] = useState<boolean>(false);
   const [isStaffManagementOpen, setIsStaffManagementOpen] = useState<boolean>(false);
+  const [isDailySummaryOpen, setIsDailySummaryOpen] = useState<boolean>(false);
+  const [isCloseoutTrigger, setIsCloseoutTrigger] = useState<boolean>(false);
 
   // Cloud Sync States
   const [isCloudSyncing, setIsCloudSyncing] = useState<boolean>(false);
@@ -466,13 +469,41 @@ export default function App() {
     setIsTerminalLocked(false);
   };
 
-  const handleLogout = () => {
+  const handleCloseTerminal = () => {
+    setIsCloseoutTrigger(true);
+    setIsDailySummaryOpen(true);
+  };
+
+  const handleConfirmCloseoutTerminal = () => {
+    setIsDailySummaryOpen(false);
+    setIsTerminalLocked(true);
     setCurrentUser(null);
+    try {
+      localStorage.removeItem(STORAGE_KEYS.CURRENT_USER);
+    } catch (e) {}
     setIsLoginModalOpen(true);
+    showCloudToast("POS Terminal closed & daily shift sales summary verified!");
+  };
+
+  const handleLogout = () => {
+    if (isAdminOrOwner(currentUser) || isManagerOrOwner(currentUser)) {
+      handleCloseTerminal();
+    } else {
+      setCurrentUser(null);
+      try {
+        localStorage.removeItem(STORAGE_KEYS.CURRENT_USER);
+      } catch (e) {}
+      setIsLoginModalOpen(true);
+    }
   };
 
   const handleLockTerminal = () => {
-    setIsTerminalLocked(true);
+    if (isAdminOrOwner(currentUser) || isManagerOrOwner(currentUser)) {
+      handleCloseTerminal();
+    } else {
+      setIsTerminalLocked(true);
+      setIsLoginModalOpen(true);
+    }
   };
 
   const handleOpenSettings = () => {
@@ -832,6 +863,11 @@ export default function App() {
         onOpenLogin={() => setIsLoginModalOpen(true)}
         onLockTerminal={handleLockTerminal}
         onLogout={handleLogout}
+        onOpenDailySummary={() => {
+          setIsCloseoutTrigger(false);
+          setIsDailySummaryOpen(true);
+        }}
+        onCloseTerminal={handleCloseTerminal}
         onViewOrder={(order) => setViewingInvoice(order)}
         onMarkAsRead={handleMarkNotificationAsRead}
         onMarkAllAsRead={handleMarkAllNotificationsAsRead}
@@ -858,9 +894,15 @@ export default function App() {
                 existingOrders={orders}
                 profile={profile}
                 categories={categories}
+                currentUser={currentUser}
                 onSaveOrder={handleSaveOrder}
                 onViewInvoice={(order) => setViewingInvoice(order)}
                 onOpenTableQR={handleOpenTableQR}
+                onCloseTerminal={handleCloseTerminal}
+                onOpenDailySummary={() => {
+                  setIsCloseoutTrigger(false);
+                  setIsDailySummaryOpen(true);
+                }}
               />
             )}
 
@@ -995,6 +1037,17 @@ export default function App() {
         onSaveStaff={handleSaveStaff}
         onDeleteStaff={handleDeleteStaff}
         onSaveProfile={handleSaveProfile}
+      />
+
+      {/* Daily Sales & POS Shift Closeout Summary Modal */}
+      <DailySalesSummaryModal
+        isOpen={isDailySummaryOpen}
+        onClose={() => setIsDailySummaryOpen(false)}
+        onConfirmCloseTerminal={handleConfirmCloseoutTerminal}
+        orders={orders}
+        profile={profile}
+        currentUser={currentUser}
+        isCloseoutTrigger={isCloseoutTrigger}
       />
 
       {/* Staff Login & Authentication Modal */}

@@ -63,8 +63,11 @@
       visibility: hidden;
     }
 
+    /* Make both the printable invoice and daily sales summary Z-report visible */
     #printable-invoice-content,
-    #printable-invoice-content * {
+    #printable-invoice-content *,
+    #printable-daily-sales-summary,
+    #printable-daily-sales-summary * {
       visibility: visible;
     }
 
@@ -88,8 +91,72 @@
       font-size: 11px !important;
     }
 
+    /* =========================================================
+       DEDICATED DAILY SALES SUMMARY & Z-REPORT PRINT UTILITY
+       ========================================================= */
+    #printable-daily-sales-summary {
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 100% !important;
+      max-width: 80mm !important;
+      margin: 0 auto !important;
+      padding: 4mm 2mm !important;
+      font-family: 'Courier New', Courier, monospace, system-ui, sans-serif !important;
+      font-size: 11px !important;
+      line-height: 1.35 !important;
+      color: #000000 !important;
+      background: #ffffff !important;
+      box-shadow: none !important;
+      border: none !important;
+      display: block !important;
+    }
+
+    /* Wide format option for standard A4 / Letter printers */
+    #printable-daily-sales-summary.print-full-sheet {
+      max-width: 100% !important;
+      padding: 10mm !important;
+      font-size: 12px !important;
+    }
+
+    /* Hide screen-only buttons, interactive tabs, search bars, and dialog chrome */
+    .no-print,
+    .screen-only,
+    #daily-sales-summary-modal .no-print {
+      display: none !important;
+    }
+
+    /* Receipt separator lines */
+    .receipt-divider-dashed {
+      border-top: 1px dashed #000000 !important;
+      margin: 6px 0 !important;
+    }
+
+    .receipt-divider-double {
+      border-top: 3px double #000000 !important;
+      margin: 8px 0 !important;
+    }
+
+    .receipt-row-compact {
+      display: flex !important;
+      justify-content: space-between !important;
+      align-items: center !important;
+      padding: 1.5px 0 !important;
+      font-size: 11px !important;
+    }
+
+    .receipt-row-total {
+      display: flex !important;
+      justify-content: space-between !important;
+      align-items: center !important;
+      font-weight: 900 !important;
+      font-size: 13px !important;
+      padding: 3px 0 !important;
+    }
+
     @page {
-      margin: 6mm;
+      margin: 4mm;
+      size: auto;
     }
   }
 }

@@ -239,7 +239,8 @@ export const DailySalesSummaryModal: React.FC<DailySalesSummaryModalProps> = ({
       aria-modal="true"
       aria-labelledby="daily-sales-title"
     >
-      <div className="relative w-full max-w-4xl bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 flex flex-col overflow-hidden my-auto max-h-[92vh]">
+      {/* Interactive Screen Modal Container */}
+      <div className="relative w-full max-w-4xl bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 flex flex-col overflow-hidden my-auto max-h-[92vh] no-print">
         
         {/* Modal Top Header */}
         <div className="p-4 sm:p-6 bg-slate-900 text-white border-b border-slate-800 flex flex-wrap items-center justify-between gap-4">
@@ -881,6 +882,205 @@ export const DailySalesSummaryModal: React.FC<DailySalesSummaryModalProps> = ({
           </div>
         </div>
 
+      </div>
+
+      {/* DEDICATED PRINT-ONLY THERMAL / PAPER Z-REPORT RECEIPT */}
+      <div id="printable-daily-sales-summary" className="hidden print:block text-black bg-white">
+        {/* Header */}
+        <div className="text-center pb-1">
+          <h1 className="font-bold text-sm uppercase tracking-wider">{profile.name}</h1>
+          {profile.tagline && <p className="text-[10px] text-neutral-600">{profile.tagline}</p>}
+          {profile.address && <p className="text-[10px] text-neutral-700">{profile.address}</p>}
+          {profile.phone && <p className="text-[10px] text-neutral-700">Tel: {profile.phone}</p>}
+          {profile.taxId && <p className="text-[10px] text-neutral-700">Tax / GST: {profile.taxId}</p>}
+        </div>
+
+        <div className="receipt-divider-double" />
+
+        <div className="text-center font-bold text-xs uppercase tracking-widest py-0.5">
+          DAILY SALES Z-REPORT
+        </div>
+
+        <div className="receipt-divider-dashed" />
+
+        {/* Shift & Time Details */}
+        <div className="text-[10px] space-y-0.5">
+          <div className="flex justify-between">
+            <span>REPORT DATE:</span>
+            <span className="font-bold font-mono">{selectedDate}</span>
+          </div>
+          <div className="flex justify-between">
+            <span>PRINTED AT:</span>
+            <span className="font-mono">{new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>
+          </div>
+          <div className="flex justify-between">
+            <span>TERMINAL:</span>
+            <span>POS Main Station #1</span>
+          </div>
+          <div className="flex justify-between">
+            <span>VERIFIED BY:</span>
+            <span className="font-bold">{currentUser?.displayName || 'Admin / Manager'}</span>
+          </div>
+          <div className="flex justify-between">
+            <span>ROLE:</span>
+            <span className="uppercase">{currentUser?.role || 'Admin'}</span>
+          </div>
+        </div>
+
+        <div className="receipt-divider-dashed" />
+
+        {/* Financial Metrics */}
+        <div className="font-bold text-[11px] uppercase pb-0.5">FINANCIAL REVENUE TOTALS</div>
+        <div className="space-y-0.5 text-[11px]">
+          <div className="receipt-row-compact">
+            <span>Gross Sales:</span>
+            <span className="font-mono font-bold">{formatCurrency(metrics.grossTotal, profile.currency)}</span>
+          </div>
+          {metrics.totalDiscounts > 0 && (
+            <div className="receipt-row-compact">
+              <span>Discounts / Promos:</span>
+              <span className="font-mono">-{formatCurrency(metrics.totalDiscounts, profile.currency)}</span>
+            </div>
+          )}
+          <div className="receipt-row-compact">
+            <span>Taxes ({profile.taxRate}%):</span>
+            <span className="font-mono">{formatCurrency(metrics.totalTax, profile.currency)}</span>
+          </div>
+          {metrics.totalServiceCharge > 0 && (
+            <div className="receipt-row-compact">
+              <span>Service Charge:</span>
+              <span className="font-mono">{formatCurrency(metrics.totalServiceCharge, profile.currency)}</span>
+            </div>
+          )}
+          {metrics.totalTips > 0 && (
+            <div className="receipt-row-compact">
+              <span>Tips (Staff Pool):</span>
+              <span className="font-mono">+{formatCurrency(metrics.totalTips, profile.currency)}</span>
+            </div>
+          )}
+          
+          <div className="receipt-divider-double" />
+          
+          <div className="receipt-row-total">
+            <span>NET SETTLED REVENUE:</span>
+            <span className="font-mono text-sm">{formatCurrency(metrics.totalRevenue, profile.currency)}</span>
+          </div>
+        </div>
+
+        <div className="receipt-divider-dashed" />
+
+        {/* Order Volumes & Ticket Sizes */}
+        <div className="font-bold text-[11px] uppercase pb-0.5">ORDER VOLUME & STATS</div>
+        <div className="space-y-0.5 text-[10px]">
+          <div className="receipt-row-compact">
+            <span>Total Orders:</span>
+            <span className="font-mono font-bold">{metrics.orderCount}</span>
+          </div>
+          <div className="receipt-row-compact">
+            <span>• Paid & Closed:</span>
+            <span className="font-mono">{metrics.paidCount}</span>
+          </div>
+          <div className="receipt-row-compact">
+            <span>• Open / Pending:</span>
+            <span className="font-mono">{metrics.pendingCount}</span>
+          </div>
+          <div className="receipt-row-compact">
+            <span>Total Items Prepared:</span>
+            <span className="font-mono font-bold">{metrics.totalItemsSold}</span>
+          </div>
+          <div className="receipt-row-compact">
+            <span>Average Order Value (AOV):</span>
+            <span className="font-mono font-bold">{formatCurrency(metrics.aov, profile.currency)}</span>
+          </div>
+        </div>
+
+        <div className="receipt-divider-dashed" />
+
+        {/* Payment Methods */}
+        <div className="font-bold text-[11px] uppercase pb-0.5">PAYMENTS TENDERED</div>
+        <div className="space-y-0.5 text-[10px]">
+          {(Object.entries(metrics.paymentBreakdown) as [string, { count: number; total: number }][]).map(([method, data]) => {
+            if (data.count === 0 && method !== 'cash' && method !== 'credit_card' && method !== 'upi_qr') return null;
+            const getMethodLabel = (m: string) => {
+              switch (m) {
+                case 'cash': return 'Cash Drawer';
+                case 'credit_card': return 'Credit Card';
+                case 'debit_card': return 'Debit Card';
+                case 'upi_qr': return 'UPI / QR Scan';
+                case 'bank_transfer': return 'Bank Transfer';
+                case 'house_account': return 'House Account';
+                case 'split': return 'Split Payment';
+                default: return m.toUpperCase();
+              }
+            };
+            return (
+              <div key={method} className="receipt-row-compact">
+                <span>{getMethodLabel(method)} ({data.count}x):</span>
+                <span className="font-mono font-bold">{formatCurrency(data.total, profile.currency)}</span>
+              </div>
+            );
+          })}
+        </div>
+
+        <div className="receipt-divider-dashed" />
+
+        {/* Channel Breakdown */}
+        <div className="font-bold text-[11px] uppercase pb-0.5">CHANNELS & FULFILLMENT</div>
+        <div className="space-y-0.5 text-[10px]">
+          <div className="receipt-row-compact">
+            <span>Dine-In Tables ({metrics.orderTypesBreakdown.dineIn.count}x):</span>
+            <span className="font-mono">{formatCurrency(metrics.orderTypesBreakdown.dineIn.total, profile.currency)}</span>
+          </div>
+          <div className="receipt-row-compact">
+            <span>Takeout / Pick-up ({metrics.orderTypesBreakdown.takeout.count}x):</span>
+            <span className="font-mono">{formatCurrency(metrics.orderTypesBreakdown.takeout.total, profile.currency)}</span>
+          </div>
+          {metrics.orderTypesBreakdown.delivery.count > 0 && (
+            <div className="receipt-row-compact">
+              <span>Delivery ({metrics.orderTypesBreakdown.delivery.count}x):</span>
+              <span className="font-mono">{formatCurrency(metrics.orderTypesBreakdown.delivery.total, profile.currency)}</span>
+            </div>
+          )}
+          {metrics.orderTypesBreakdown.qrSelf.count > 0 && (
+            <div className="receipt-row-compact">
+              <span>Table QR Self-Orders ({metrics.orderTypesBreakdown.qrSelf.count}x):</span>
+              <span className="font-mono">{formatCurrency(metrics.orderTypesBreakdown.qrSelf.total, profile.currency)}</span>
+            </div>
+          )}
+        </div>
+
+        {metrics.popularItems.length > 0 && (
+          <>
+            <div className="receipt-divider-dashed" />
+            <div className="font-bold text-[11px] uppercase pb-0.5">TOP POPULAR ITEMS</div>
+            <div className="space-y-0.5 text-[10px]">
+              {metrics.popularItems.slice(0, 7).map((item, idx) => (
+                <div key={item.id} className="flex justify-between items-center">
+                  <span className="truncate pr-1">#{idx + 1} {item.name} x{item.quantity}</span>
+                  <span className="font-mono font-bold shrink-0">{formatCurrency(item.revenue, profile.currency)}</span>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+
+        <div className="receipt-divider-double" />
+
+        {/* Sign-off / Signature */}
+        <div className="pt-2 text-[10px] space-y-3">
+          <div className="flex justify-between items-center text-neutral-700">
+            <span>MANAGER SIGNATURE:</span>
+            <span className="border-b border-black w-28 inline-block h-3" />
+          </div>
+          <div className="flex justify-between items-center text-neutral-700">
+            <span>CASH DRAWER BALANCED:</span>
+            <span className="border-b border-black w-28 inline-block h-3" />
+          </div>
+        </div>
+
+        <div className="text-center text-[9px] pt-3 text-neutral-600 tracking-wider">
+          *** END OF DAILY Z-REPORT ***
+        </div>
       </div>
     </div>
   );

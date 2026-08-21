@@ -426,23 +426,6 @@ export const NavDrawer: React.FC<NavDrawerProps> = ({
             </div>
 
             <div className="grid grid-cols-2 gap-2">
-              {!isKitchen && canAccessTableQR(currentUser) && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    onClose();
-                    onOpenTableQR();
-                  }}
-                  className="p-2.5 bg-slate-950/70 hover:bg-slate-800 border border-slate-800 rounded-xl text-left transition-all cursor-pointer group flex flex-col justify-between"
-                >
-                  <QrCode className="w-4 h-4 text-amber-400 mb-1.5 group-hover:scale-110 transition-transform" />
-                  <div>
-                    <span className="text-xs font-bold text-slate-200 block">Table QRs</span>
-                    <span className="text-[10px] text-slate-400">Self-ordering</span>
-                  </div>
-                </button>
-              )}
-
               {!isKitchen && canAccessStaffManagement(currentUser) && onOpenStaffManagement && (
                 <button
                   type="button"

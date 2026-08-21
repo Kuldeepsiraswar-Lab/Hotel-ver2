@@ -569,38 +569,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 </div>
               )}
 
-              {/* Table QR Codes */}
-              {!isKitchen && canAccessTableQR(currentUser) && (
-                <div className="relative group">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (isMobileOpen) onCloseMobile();
-                      onOpenTableQR();
-                    }}
-                    onMouseEnter={() => setHoveredTooltip('table-qr')}
-                    onMouseLeave={() => setHoveredTooltip(null)}
-                    className={`w-full rounded-xl text-left transition-all flex items-center text-slate-300 hover:text-white hover:bg-slate-800 border border-transparent hover:border-slate-700/60 cursor-pointer ${
-                      isCollapsed ? 'md:justify-center md:p-2.5' : 'p-2 gap-2.5'
-                    }`}
-                  >
-                    <div className="p-1.5 bg-slate-800 group-hover:bg-indigo-400/20 text-indigo-400 rounded-lg shrink-0 transition-colors">
-                      <QrCode className="w-4 h-4" />
-                    </div>
-                    <div className={`min-w-0 flex-1 ${isCollapsed ? 'md:hidden' : 'block'}`}>
-                      <span className="text-xs font-bold block">Table QRs</span>
-                      <span className="text-[10px] text-slate-400 block">Digital standees</span>
-                    </div>
-                  </button>
-
-                  {isCollapsed && hoveredTooltip === 'table-qr' && (
-                    <div className="hidden md:block absolute left-full ml-3 top-1/2 -translate-y-1/2 z-50 bg-slate-950 text-white border border-slate-700 px-3 py-1.5 rounded-xl text-xs font-bold shadow-2xl pointer-events-none whitespace-nowrap">
-                      Table QR Codes & Standees
-                    </div>
-                  )}
-                </div>
-              )}
-
               {/* Staff Roster & PINs */}
               {!isKitchen && canAccessStaffManagement(currentUser) && onOpenStaffManagement && (
                 <div className="relative group">

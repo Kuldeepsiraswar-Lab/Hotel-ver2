@@ -17,14 +17,9 @@ import {
   Lock, 
   KeyRound, 
   LogOut, 
-  ChevronLeft, 
   ChevronRight, 
-  PanelLeftClose, 
-  PanelLeftOpen, 
   X, 
-  ShieldAlert,
-  HelpCircle,
-  Menu as MenuIcon
+  ShieldAlert
 } from 'lucide-react';
 import { RestaurantProfile, StaffUser } from '../types';
 import { NavTab } from './Navbar';
@@ -263,24 +258,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
               </div>
             </div>
           </div>
-
-          {/* Desktop Collapse / Expand Button */}
-          <button
-            type="button"
-            id="sidebar-collapse-toggle-btn"
-            onClick={onToggleCollapse}
-            title={isCollapsed ? "Expand Sidebar (Ctrl+B)" : "Collapse to Icon Bar (Ctrl+B)"}
-            aria-label={isCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
-            className={`hidden md:flex p-1.5 rounded-lg text-slate-400 hover:text-amber-400 hover:bg-slate-800 transition-colors cursor-pointer shrink-0 border border-slate-700/60 ${
-              isCollapsed ? 'mx-auto' : ''
-            }`}
-          >
-            {isCollapsed ? (
-              <PanelLeftOpen className="w-4 h-4" />
-            ) : (
-              <PanelLeftClose className="w-4 h-4" />
-            )}
-          </button>
 
           {/* Mobile Close Button */}
           <button
@@ -527,82 +504,16 @@ export const Sidebar: React.FC<SidebarProps> = ({
           {/* =========================================================================
               OPERATIONS & QUICK TOOLS
              ========================================================================= */}
-          <div className="pt-2 border-t border-slate-800/80">
-            <div className={`px-2 mb-1.5 text-[10px] font-extrabold uppercase tracking-wider text-slate-400 ${
-              isCollapsed ? 'md:hidden' : 'block'
-            }`}>
-              <span>Operations & Tools</span>
-            </div>
+          {!isKitchen && canAccessSettings(currentUser) && (
+            <div className="pt-2 border-t border-slate-800/80">
+              <div className={`px-2 mb-1.5 text-[10px] font-extrabold uppercase tracking-wider text-slate-400 ${
+                isCollapsed ? 'md:hidden' : 'block'
+              }`}>
+                <span>Operations & Tools</span>
+              </div>
 
-            <div className={`space-y-1 ${isCollapsed ? 'md:space-y-1' : ''}`}>
-              
-              {/* Daily Sales Summary / Z-Report */}
-              {!isKitchen && (
-                <div className="relative group">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (isMobileOpen) onCloseMobile();
-                      if (onOpenDailySummary) onOpenDailySummary();
-                      else if (onCloseTerminal) onCloseTerminal();
-                    }}
-                    onMouseEnter={() => setHoveredTooltip('daily-sales')}
-                    onMouseLeave={() => setHoveredTooltip(null)}
-                    className={`w-full rounded-xl text-left transition-all flex items-center text-slate-300 hover:text-white hover:bg-slate-800 border border-transparent hover:border-slate-700/60 cursor-pointer ${
-                      isCollapsed ? 'md:justify-center md:p-2.5' : 'p-2 gap-2.5'
-                    }`}
-                  >
-                    <div className="p-1.5 bg-slate-800 group-hover:bg-amber-400/20 text-amber-400 rounded-lg shrink-0 transition-colors">
-                      <DollarSign className="w-4 h-4 stroke-[2.5]" />
-                    </div>
-                    <div className={`min-w-0 flex-1 ${isCollapsed ? 'md:hidden' : 'block'}`}>
-                      <span className="text-xs font-bold block">Daily Sales</span>
-                      <span className="text-[10px] text-slate-400 block">Z-Report Closeout</span>
-                    </div>
-                  </button>
-
-                  {isCollapsed && hoveredTooltip === 'daily-sales' && (
-                    <div className="hidden md:block absolute left-full ml-3 top-1/2 -translate-y-1/2 z-50 bg-slate-950 text-white border border-slate-700 px-3 py-1.5 rounded-xl text-xs font-bold shadow-2xl pointer-events-none whitespace-nowrap">
-                      Daily Sales Summary & Z-Report
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Staff Roster & PINs */}
-              {!isKitchen && canAccessStaffManagement(currentUser) && onOpenStaffManagement && (
-                <div className="relative group">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (isMobileOpen) onCloseMobile();
-                      onOpenStaffManagement();
-                    }}
-                    onMouseEnter={() => setHoveredTooltip('staff-roster')}
-                    onMouseLeave={() => setHoveredTooltip(null)}
-                    className={`w-full rounded-xl text-left transition-all flex items-center text-slate-300 hover:text-white hover:bg-slate-800 border border-transparent hover:border-slate-700/60 cursor-pointer ${
-                      isCollapsed ? 'md:justify-center md:p-2.5' : 'p-2 gap-2.5'
-                    }`}
-                  >
-                    <div className="p-1.5 bg-slate-800 group-hover:bg-indigo-400/20 text-indigo-400 rounded-lg shrink-0 transition-colors">
-                      <Users className="w-4 h-4" />
-                    </div>
-                    <div className={`min-w-0 flex-1 ${isCollapsed ? 'md:hidden' : 'block'}`}>
-                      <span className="text-xs font-bold block">Staff Roster</span>
-                      <span className="text-[10px] text-slate-400 block">Admin PINs & Roles</span>
-                    </div>
-                  </button>
-
-                  {isCollapsed && hoveredTooltip === 'staff-roster' && (
-                    <div className="hidden md:block absolute left-full ml-3 top-1/2 -translate-y-1/2 z-50 bg-slate-950 text-white border border-slate-700 px-3 py-1.5 rounded-xl text-xs font-bold shadow-2xl pointer-events-none whitespace-nowrap">
-                      Staff Accounts & Passcode Security
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Settings */}
-              {!isKitchen && canAccessSettings(currentUser) && (
+              <div className={`space-y-1 ${isCollapsed ? 'md:space-y-1' : ''}`}>
+                {/* Settings */}
                 <div className="relative group">
                   <button
                     type="button"
@@ -616,7 +527,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                       isCollapsed ? 'md:justify-center md:p-2.5' : 'p-2 gap-2.5'
                     }`}
                   >
-                    <div className="p-1.5 bg-slate-800 group-hover:bg-slate-700 text-slate-300 rounded-lg shrink-0 transition-colors">
+                    <div className="p-1.5 bg-slate-800 group-hover:bg-amber-400/20 text-amber-400 rounded-lg shrink-0 transition-colors">
                       <Settings className="w-4 h-4" />
                     </div>
                     <div className={`min-w-0 flex-1 ${isCollapsed ? 'md:hidden' : 'block'}`}>
@@ -627,49 +538,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
                   {isCollapsed && hoveredTooltip === 'settings' && (
                     <div className="hidden md:block absolute left-full ml-3 top-1/2 -translate-y-1/2 z-50 bg-slate-950 text-white border border-slate-700 px-3 py-1.5 rounded-xl text-xs font-bold shadow-2xl pointer-events-none whitespace-nowrap">
-                      Settings & Tax Configuration
+                      Restaurant Settings Hub
                     </div>
                   )}
                 </div>
-              )}
-
-              {/* Cloud DB Sync Button */}
-              {onManualCloudSync && (
-                <div className="relative group">
-                  <button
-                    type="button"
-                    onClick={onManualCloudSync}
-                    disabled={isCloudSyncing}
-                    onMouseEnter={() => setHoveredTooltip('cloud-sync')}
-                    onMouseLeave={() => setHoveredTooltip(null)}
-                    className={`w-full rounded-xl text-left transition-all flex items-center text-slate-300 hover:text-white hover:bg-slate-800 border border-transparent hover:border-slate-700/60 cursor-pointer ${
-                      isCollapsed ? 'md:justify-center md:p-2.5' : 'p-2 gap-2.5'
-                    }`}
-                  >
-                    <div className="p-1.5 bg-slate-800 rounded-lg shrink-0">
-                      <Cloud className={`w-4 h-4 ${isCloudSyncing ? 'text-amber-400 animate-pulse' : 'text-emerald-400'}`} />
-                    </div>
-                    <div className={`min-w-0 flex-1 ${isCollapsed ? 'md:hidden' : 'block'}`}>
-                      <span className="text-xs font-bold block flex items-center gap-1.5">
-                        <span>Cloud Database</span>
-                        <span className={`w-1.5 h-1.5 rounded-full ${isCloudSyncing ? 'bg-amber-400 animate-ping' : 'bg-emerald-400'}`} />
-                      </span>
-                      <span className="text-[10px] text-slate-400 block">
-                        {isCloudSyncing ? 'Syncing...' : 'Firestore Live'}
-                      </span>
-                    </div>
-                  </button>
-
-                  {isCollapsed && hoveredTooltip === 'cloud-sync' && (
-                    <div className="hidden md:block absolute left-full ml-3 top-1/2 -translate-y-1/2 z-50 bg-slate-950 text-white border border-slate-700 px-3 py-1.5 rounded-xl text-xs font-bold shadow-2xl pointer-events-none whitespace-nowrap">
-                      Google Cloud Firestore Sync
-                    </div>
-                  )}
-                </div>
-              )}
-
+              </div>
             </div>
-          </div>
+          )}
 
         </div>
 
@@ -744,26 +619,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
               )}
             </div>
           )}
-
-          {/* Quick Collapse expand toggle button at bottom */}
-          <div className="hidden md:block pt-1">
-            <button
-              type="button"
-              onClick={onToggleCollapse}
-              className={`w-full py-1.5 px-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 text-[11px] font-bold transition-colors flex items-center justify-center gap-1.5 cursor-pointer border border-slate-800/80 ${
-                isCollapsed ? 'p-1' : ''
-              }`}
-            >
-              {isCollapsed ? (
-                <ChevronRight className="w-3.5 h-3.5 text-amber-400" />
-              ) : (
-                <>
-                  <ChevronLeft className="w-3.5 h-3.5 text-amber-400" />
-                  <span>Collapse Sidebar</span>
-                </>
-              )}
-            </button>
-          </div>
 
         </div>
 

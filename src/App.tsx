@@ -1232,6 +1232,9 @@ export default function App() {
         onClose={() => setIsSettingsOpen(false)}
         profile={profile}
         currentUser={currentUser}
+        staffList={staffList}
+        onSaveStaff={handleSaveStaff}
+        onDeleteStaff={handleDeleteStaff}
         onSaveProfile={handleSaveProfile}
         onResetToDefaults={handleResetToDefaults}
         onExportAllData={handleExportAllData}

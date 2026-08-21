@@ -420,107 +420,61 @@ export const NavDrawer: React.FC<NavDrawerProps> = ({
           </div>
 
           {/* Quick Operations & Tools */}
-          <div className="pt-2 border-t border-slate-800/80">
-            <div className="px-2.5 mb-2 text-[11px] font-extrabold uppercase tracking-wider text-slate-400">
-              {isKitchen ? 'Station Tools' : 'Restaurant Tools'}
-            </div>
+          {!isKitchen && canAccessSettings(currentUser) && (
+            <div className="pt-2 border-t border-slate-800/80">
+              <div className="px-2.5 mb-2 text-[11px] font-extrabold uppercase tracking-wider text-slate-400">
+                Restaurant Tools
+              </div>
 
-            <div className="grid grid-cols-2 gap-2">
-              {!isKitchen && canAccessStaffManagement(currentUser) && onOpenStaffManagement && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    onClose();
-                    onOpenStaffManagement();
-                  }}
-                  className="p-2.5 bg-slate-950/70 hover:bg-slate-800 border border-slate-800 rounded-xl text-left transition-all cursor-pointer group flex flex-col justify-between"
-                >
-                  <Users className="w-4 h-4 text-indigo-400 mb-1.5 group-hover:scale-110 transition-transform" />
-                  <div>
-                    <span className="text-xs font-bold text-slate-200 block">Staff Roster</span>
-                    <span className="text-[10px] text-slate-400">PINs & Roles</span>
-                  </div>
-                </button>
-              )}
-
-              {onManualCloudSync && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    onManualCloudSync();
-                  }}
-                  disabled={isCloudSyncing}
-                  className="p-2.5 bg-slate-950/70 hover:bg-slate-800 border border-slate-800 rounded-xl text-left transition-all cursor-pointer group flex flex-col justify-between"
-                >
-                  <Cloud className={`w-4 h-4 mb-1.5 ${isCloudSyncing ? 'text-amber-400 animate-pulse' : 'text-emerald-400'} group-hover:scale-110 transition-transform`} />
-                  <div>
-                    <span className="text-xs font-bold text-slate-200 block">Cloud DB</span>
-                    <span className="text-[10px] text-slate-400">
-                      {isCloudSyncing ? 'Syncing...' : 'Firestore Live'}
-                    </span>
-                  </div>
-                </button>
-              )}
-
-              {/* Daily Sales & Closeout Summary Button */}
-              {!isKitchen && (
-                <button
-                  type="button"
-                  id="drawer-daily-sales-btn"
-                  onClick={() => {
-                    onClose();
-                    if (onOpenDailySummary) {
-                      onOpenDailySummary();
-                    } else if (onCloseTerminal) {
-                      onCloseTerminal();
-                    }
-                  }}
-                  className="p-2.5 bg-slate-950/70 hover:bg-slate-800 border border-slate-800 rounded-xl text-left transition-all cursor-pointer group flex flex-col justify-between"
-                >
-                  <DollarSign className="w-4 h-4 text-amber-400 mb-1.5 group-hover:scale-110 transition-transform stroke-[2.5]" />
-                  <div>
-                    <span className="text-xs font-bold text-slate-200 block">Daily Sales</span>
-                    <span className="text-[10px] text-slate-400">Closeout & Z-Report</span>
-                  </div>
-                </button>
-              )}
-
-              {!isKitchen && canAccessSettings(currentUser) && (
+              <div className="grid grid-cols-1 gap-2">
                 <button
                   type="button"
                   onClick={() => {
                     onClose();
                     onOpenSettings();
                   }}
-                  className="p-2.5 bg-slate-950/70 hover:bg-slate-800 border border-slate-800 rounded-xl text-left transition-all cursor-pointer group flex flex-col justify-between"
+                  className="p-3 bg-slate-950/70 hover:bg-slate-800 border border-slate-800 rounded-xl text-left transition-all cursor-pointer group flex items-center justify-between"
                 >
-                  <Settings className="w-4 h-4 text-slate-300 mb-1.5 group-hover:scale-110 transition-transform" />
-                  <div>
-                    <span className="text-xs font-bold text-slate-200 block">Settings</span>
-                    <span className="text-[10px] text-slate-400">Taxes & Profile</span>
+                  <div className="flex items-center gap-2.5">
+                    <div className="p-1.5 bg-slate-800 group-hover:bg-amber-400/20 text-amber-400 rounded-lg shrink-0 transition-colors">
+                      <Settings className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <span className="text-xs font-bold text-slate-200 block">Restaurant Settings Hub</span>
+                      <span className="text-[10px] text-slate-400">Taxes, GST, Staff & Cloud Backup</span>
+                    </div>
                   </div>
+                  <ChevronRight className="w-4 h-4 text-slate-500 group-hover:text-slate-200 transition-transform group-hover:translate-x-0.5" />
                 </button>
-              )}
+              </div>
+            </div>
+          )}
 
-              {/* Kitchen Station Quick Switch PIN Button */}
-              {isKitchen && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    onClose();
-                    onOpenLogin();
-                  }}
-                  className="p-2.5 bg-slate-950/70 hover:bg-slate-800 border border-slate-800 rounded-xl text-left transition-all cursor-pointer group flex flex-col justify-between"
-                >
-                  <KeyRound className="w-4 h-4 text-amber-400 mb-1.5 group-hover:scale-110 transition-transform" />
+          {/* Kitchen Station Quick Switch PIN Button */}
+          {isKitchen && (
+            <div className="pt-2 border-t border-slate-800/80">
+              <div className="px-2.5 mb-2 text-[11px] font-extrabold uppercase tracking-wider text-slate-400">
+                Station Tools
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  onClose();
+                  onOpenLogin();
+                }}
+                className="w-full p-2.5 bg-slate-950/70 hover:bg-slate-800 border border-slate-800 rounded-xl text-left transition-all cursor-pointer group flex items-center justify-between"
+              >
+                <div className="flex items-center gap-2">
+                  <KeyRound className="w-4 h-4 text-amber-400 group-hover:scale-110 transition-transform" />
                   <div>
                     <span className="text-xs font-bold text-slate-200 block">Switch PIN</span>
                     <span className="text-[10px] text-slate-400">Cashier / Admin</span>
                   </div>
-                </button>
-              )}
+                </div>
+                <ChevronRight className="w-4 h-4 text-slate-500" />
+              </button>
             </div>
-          </div>
+          )}
         </div>
 
         {/* Drawer Footer Actions */}

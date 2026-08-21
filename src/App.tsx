@@ -704,6 +704,15 @@ export default function App() {
         amountPaid: status === 'paid' ? prev.total : prev.amountPaid,
       } : null);
     }
+
+    if (status === 'paid' && profile.autoPrintReceipt !== false && updatedOrder) {
+      if (!viewingInvoice) {
+        setViewingInvoice(updatedOrder);
+      }
+      setTimeout(() => {
+        window.print();
+      }, 400);
+    }
   };
 
   // Expense Handlers

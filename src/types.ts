@@ -183,6 +183,7 @@ export interface RestaurantProfile {
   invoiceTerms: string;
   invoicePrefix: string;
   receiptPrefix: string;
+  autoPrintReceipt?: boolean;
 }
 
 export type StaffRole = 'owner' | 'manager' | 'cashier' | 'waiter' | 'kitchen';

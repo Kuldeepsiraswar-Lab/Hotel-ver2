@@ -284,6 +284,11 @@ Thank you for choosing ${profile.name}!`;
       spread: 60,
       origin: { y: 0.7 },
     });
+    if (profile.autoPrintReceipt !== false) {
+      setTimeout(() => {
+        window.print();
+      }, 400);
+    }
   };
 
   const getStatusBadge = () => {

@@ -3,10 +3,7 @@ import {
   Menu,
   UtensilsCrossed, 
   Flame, 
-  Settings, 
   Cloud, 
-  Sun, 
-  Moon,
   PanelLeftClose,
   PanelLeftOpen,
   Receipt,
@@ -20,8 +17,7 @@ import {
 } from 'lucide-react';
 import { RestaurantProfile, AppNotification, BillOrder, StaffUser } from '../types';
 import { NotificationMenu } from './NotificationMenu';
-import { useTheme } from '../context/ThemeContext';
-import { isKitchenStaff, canAccessSettings, isAdminOrOwner } from '../utils/permissions';
+import { isKitchenStaff, isAdminOrOwner } from '../utils/permissions';
 
 export type NavTab = 'pos' | 'kitchen' | 'invoices' | 'expenses' | 'financials' | 'menu' | 'tableqr';
 
@@ -84,7 +80,6 @@ export const Navbar: React.FC<NavbarProps> = ({
   onToggleSidebarCollapse,
   onOpenMobileSidebar,
 }) => {
-  const { isDark, toggleTheme } = useTheme();
   const isKitchen = isKitchenStaff(currentUser);
   
   // Real-time clock for the POS top bar
@@ -254,35 +249,6 @@ export const Navbar: React.FC<NavbarProps> = ({
               onMarkAllAsRead={onMarkAllAsRead}
               onClearAll={onClearAllNotifications}
             />
-
-            {/* Global Theme Toggle Button */}
-            <button
-              type="button"
-              id="global-theme-toggle-btn"
-              onClick={toggleTheme}
-              className="p-2 text-slate-300 hover:text-amber-300 hover:bg-slate-800 rounded-xl transition-all border border-slate-700/50 cursor-pointer relative group"
-              title={isDark ? "Switch to Light Mode" : "Switch to Dark Mode"}
-              aria-label="Toggle Theme Mode"
-            >
-              {isDark ? (
-                <Sun className="w-4 h-4 text-amber-400 animate-in spin-in-90 duration-300" />
-              ) : (
-                <Moon className="w-4 h-4 text-indigo-300 animate-in spin-in-90 duration-300" />
-              )}
-              <span className="sr-only">Toggle Theme</span>
-            </button>
-
-            {/* Settings button - Hidden for kitchen staff */}
-            {!isKitchen && canAccessSettings(currentUser) && (
-              <button
-                type="button"
-                onClick={onOpenSettings}
-                className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl transition-colors border border-slate-700/50 cursor-pointer"
-                title="Restaurant & Cloud DB Settings"
-              >
-                <Settings className="w-4 h-4" />
-              </button>
-            )}
 
           </div>
         </div>

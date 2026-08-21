@@ -22,6 +22,7 @@ export const defaultRestaurantProfile: RestaurantProfile = {
   invoiceTerms: "Payment due within 15 days from invoice date. 1.5% monthly late fee applies to overdue balances. Thank you for your business!",
   invoicePrefix: "INV-",
   receiptPrefix: "RCP-",
+  autoPrintReceipt: true,
   bankDetails: {
     bankName: "HDFC Bank Ltd.",
     accountName: "Bella Vista Kitchen Pvt Ltd",

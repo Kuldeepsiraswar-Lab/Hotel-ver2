@@ -242,12 +242,6 @@ export const POSBilling: React.FC<POSBillingProps> = ({
 
     handleClearCart();
     onViewInvoice(newOrder);
-
-    if (status === 'paid' && profile.autoPrintReceipt !== false) {
-      setTimeout(() => {
-        window.print();
-      }, 400);
-    }
   };
 
   return (

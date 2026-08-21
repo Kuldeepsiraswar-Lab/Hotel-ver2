@@ -51,19 +51,50 @@
 
 @layer utilities {
   @media print {
-    body {
+    @page {
+      margin: 0mm !important;
+      size: auto;
+    }
+
+    html, body {
+      height: auto !important;
+      min-height: 0 !important;
+      max-height: none !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      overflow: visible !important;
       background: #ffffff !important;
       color: #000000 !important;
       -webkit-print-color-adjust: exact !important;
       print-color-adjust: exact !important;
     }
 
-    /* Hide background interface, navbars, and modal backdrops during print */
+    /* Hide everything by default during print */
     body * {
       visibility: hidden;
     }
 
-    /* Make both the printable invoice and daily sales summary Z-report visible */
+    /* Modal overlays & dialog reset so they don't occupy flow height or create blank 2nd pages */
+    #invoice-viewer-backdrop,
+    #invoice-viewer-dialog,
+    #daily-sales-summary-modal,
+    .modal-backdrop,
+    .fixed {
+      position: static !important;
+      height: auto !important;
+      min-height: 0 !important;
+      max-height: none !important;
+      overflow: visible !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      background: transparent !important;
+      border: none !important;
+      box-shadow: none !important;
+      backdrop-filter: none !important;
+      -webkit-backdrop-filter: none !important;
+    }
+
+    /* Explicitly make only the active printable bill/summary visible */
     #printable-invoice-content,
     #printable-invoice-content *,
     #printable-daily-sales-summary,
@@ -71,35 +102,60 @@
       visibility: visible;
     }
 
+    /* Force single bill layout with no duplicate page breaks */
     #printable-invoice-content {
-      position: absolute;
-      left: 0;
-      top: 0;
+      position: relative !important;
+      left: auto !important;
+      top: auto !important;
       margin: 0 auto !important;
       box-shadow: none !important;
       border: none !important;
       background: #ffffff !important;
       width: 100% !important;
+      display: block !important;
+      page-break-inside: avoid !important;
+      break-inside: avoid !important;
+      page-break-after: avoid !important;
+      break-after: avoid !important;
+      page-break-before: avoid !important;
+      break-before: avoid !important;
     }
 
-    /* Specific 80mm thermal receipt roll layout when printing receipt */
+    /* Specific 80mm thermal receipt roll layout - strictly single slip */
     #printable-invoice-content.thermal-receipt-mode {
-      width: 80mm !important;
-      max-width: 80mm !important;
+      width: 76mm !important;
+      max-width: 76mm !important;
       margin: 0 auto !important;
-      padding: 3mm !important;
+      padding: 3mm 2mm !important;
       font-size: 11px !important;
+      box-sizing: border-box !important;
+      page-break-inside: avoid !important;
+      break-inside: avoid !important;
+      page-break-after: avoid !important;
+      break-after: avoid !important;
+    }
+
+    /* A4 / Executive Tax Invoice layout - single clean sheet */
+    #printable-invoice-content:not(.thermal-receipt-mode) {
+      max-width: 190mm !important;
+      margin: 0 auto !important;
+      padding: 6mm 8mm !important;
+      box-sizing: border-box !important;
+      page-break-inside: avoid !important;
+      break-inside: avoid !important;
+      page-break-after: avoid !important;
+      break-after: avoid !important;
     }
 
     /* =========================================================
        DEDICATED DAILY SALES SUMMARY & Z-REPORT PRINT UTILITY
        ========================================================= */
     #printable-daily-sales-summary {
-      position: absolute;
-      left: 0;
-      top: 0;
+      position: relative !important;
+      left: auto !important;
+      top: auto !important;
       width: 100% !important;
-      max-width: 80mm !important;
+      max-width: 76mm !important;
       margin: 0 auto !important;
       padding: 4mm 2mm !important;
       font-family: 'Courier New', Courier, monospace, system-ui, sans-serif !important;
@@ -110,18 +166,23 @@
       box-shadow: none !important;
       border: none !important;
       display: block !important;
+      page-break-inside: avoid !important;
+      break-inside: avoid !important;
+      page-break-after: avoid !important;
+      break-after: avoid !important;
     }
 
     /* Wide format option for standard A4 / Letter printers */
     #printable-daily-sales-summary.print-full-sheet {
-      max-width: 100% !important;
-      padding: 10mm !important;
+      max-width: 190mm !important;
+      padding: 8mm !important;
       font-size: 12px !important;
     }
 
     /* Hide screen-only buttons, interactive tabs, search bars, and dialog chrome */
     .no-print,
     .screen-only,
+    .print\\:hidden,
     #daily-sales-summary-modal .no-print {
       display: none !important;
     }
@@ -152,11 +213,6 @@
       font-weight: 900 !important;
       font-size: 13px !important;
       padding: 3px 0 !important;
-    }
-
-    @page {
-      margin: 4mm;
-      size: auto;
     }
   }
 }

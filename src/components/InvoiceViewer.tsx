@@ -284,11 +284,6 @@ Thank you for choosing ${profile.name}!`;
       spread: 60,
       origin: { y: 0.7 },
     });
-    if (profile.autoPrintReceipt !== false) {
-      setTimeout(() => {
-        window.print();
-      }, 400);
-    }
   };
 
   const getStatusBadge = () => {
@@ -324,22 +319,24 @@ Thank you for choosing ${profile.name}!`;
   return (
     <motion.div 
       key="invoice-viewer-backdrop"
+      id="invoice-viewer-backdrop"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       transition={{ duration: 0.22, ease: "easeOut" }}
-      className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-slate-950/70 backdrop-blur-xs overflow-y-auto"
+      className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-slate-950/70 backdrop-blur-xs overflow-y-auto print:p-0 print:m-0 print:overflow-visible print:bg-transparent print:static"
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
     >
       <motion.div 
         key="invoice-viewer-dialog"
+        id="invoice-viewer-dialog"
         initial={{ opacity: 0, scale: 0.94, y: 16 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.94, y: 12 }}
         transition={{ duration: 0.24, ease: [0.16, 1, 0.3, 1] }}
-        className="bg-slate-100 dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-300 dark:border-slate-800 w-full max-w-5xl max-h-[96vh] flex flex-col overflow-hidden"
+        className="bg-slate-100 dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-300 dark:border-slate-800 w-full max-w-5xl max-h-[96vh] flex flex-col overflow-hidden print:shadow-none print:border-none print:max-h-none print:overflow-visible print:bg-transparent print:static print:w-full"
         onClick={(e) => e.stopPropagation()}
       >
         
@@ -577,14 +574,14 @@ Thank you for choosing ${profile.name}!`;
         </div>
 
         {/* Invoice / Receipt Main Render Container */}
-        <div className="p-4 sm:p-8 overflow-y-auto flex-1 bg-slate-200/60 flex justify-center">
+        <div className="p-4 sm:p-8 overflow-y-auto flex-1 bg-slate-200/60 flex justify-center print:p-0 print:m-0 print:overflow-visible print:bg-transparent print:block">
           
           <div 
             id="printable-invoice-content"
-            className={`bg-white shadow-xl transition-all duration-200 ${
+            className={`bg-white shadow-xl transition-all duration-200 print:shadow-none print:border-none print:m-0 ${
               viewMode === 'receipt' 
-                ? 'thermal-receipt-mode w-full max-w-[360px] p-6 text-slate-900 border border-slate-300 font-mono text-xs' 
-                : 'w-full max-w-3xl p-8 sm:p-10 text-slate-800 border border-slate-200'
+                ? 'thermal-receipt-mode w-full max-w-[360px] p-6 text-slate-900 border border-slate-300 font-mono text-xs print:p-2' 
+                : 'w-full max-w-3xl p-8 sm:p-10 text-slate-800 border border-slate-200 print:p-4'
             }`}
           >
             

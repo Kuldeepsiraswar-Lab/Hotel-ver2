@@ -4,7 +4,6 @@ import {
   Building2, 
   Percent, 
   Receipt, 
-  Printer,
   X, 
   RotateCcw, 
   Download, 
@@ -306,7 +305,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     { id: 'admin_props', label: 'Admin Properties', icon: Crown, accentColor: 'border-purple-500 text-purple-400' },
     { id: 'appearance', label: 'System Appearance', icon: Palette, accentColor: 'border-pink-500 text-pink-400' },
     { id: 'bank_details', label: 'Bank Details', icon: CreditCard, accentColor: 'border-teal-500 text-teal-400' },
-    { id: 'invoice_footer', label: 'Receipts & Printing', icon: Printer, accentColor: 'border-orange-500 text-orange-400' },
+    { id: 'invoice_footer', label: 'Invoice Footer', icon: Receipt, accentColor: 'border-orange-500 text-orange-400' },
     { id: 'cloud_db', label: 'Cloud Database', icon: Cloud, badge: 'Live', accentColor: 'border-emerald-500 text-emerald-400' },
     { id: 'data_backup', label: 'Data & Backup', icon: HardDrive, accentColor: 'border-indigo-500 text-indigo-400' },
   ];
@@ -1012,71 +1011,20 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 </div>
               )}
 
-              {/* 7. RECEIPT, INVOICE & PRINTING SETTINGS */}
+              {/* 7. INVOICE FOOTERS & DISCLAIMERS */}
               {shouldShowSection('invoice_footer') && (
                 <div className="p-4 bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700/60 rounded-2xl space-y-3">
                   <div className="flex items-center justify-between pb-2 border-b border-slate-200 dark:border-slate-700/50">
                     <h4 className="font-bold text-slate-900 dark:text-white text-xs uppercase tracking-wider flex items-center gap-2">
                       <div className="p-1.5 bg-orange-500/10 text-orange-500 rounded-lg">
-                        <Printer className="w-4 h-4" />
+                        <Receipt className="w-4 h-4" />
                       </div>
-                      <span>Receipts, Invoices & Printing Preferences</span>
+                      <span>Invoice Footers & Disclaimers</span>
                     </h4>
-                    <span className="text-[10px] font-medium text-slate-500 dark:text-slate-400">Automated Closeout & Slip Rules</span>
+                    <span className="text-[10px] font-medium text-slate-500 dark:text-slate-400">Thermal Slip & B2B Terms</span>
                   </div>
 
                   <div className="space-y-3 pt-1">
-                    {/* Print Receipt Automatically Toggle Switch */}
-                    <div className="p-3.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700/80 rounded-xl flex items-center justify-between gap-4">
-                      <div className="flex items-start gap-3">
-                        <div className={`p-2 rounded-xl shrink-0 transition-colors ${
-                          form.autoPrintReceipt !== false 
-                            ? 'bg-amber-500/10 text-amber-500 border border-amber-500/20' 
-                            : 'bg-slate-100 dark:bg-slate-800 text-slate-400'
-                        }`}>
-                          <Printer className="w-5 h-5" />
-                        </div>
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <span className="font-bold text-slate-900 dark:text-white text-xs">
-                              Print Receipt Automatically
-                            </span>
-                            <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider ${
-                              form.autoPrintReceipt !== false
-                                ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700'
-                                : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 border border-slate-300 dark:border-slate-700'
-                            }`}>
-                              {form.autoPrintReceipt !== false ? 'Auto-Print Active' : 'Off'}
-                            </span>
-                          </div>
-                          <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
-                            Automatically triggers the print dialog after a payment status is updated to &apos;paid&apos;.
-                          </p>
-                        </div>
-                      </div>
-
-                      {/* Toggle Switch Button */}
-                      <button
-                        type="button"
-                        id="auto-print-receipt-toggle-btn"
-                        role="switch"
-                        aria-checked={form.autoPrintReceipt !== false}
-                        onClick={() => handleChange('autoPrintReceipt', form.autoPrintReceipt === false ? true : false)}
-                        className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 ${
-                          form.autoPrintReceipt !== false ? 'bg-amber-500' : 'bg-slate-300 dark:bg-slate-700'
-                        }`}
-                        title={form.autoPrintReceipt !== false ? "Disable Auto-Print" : "Enable Auto-Print"}
-                      >
-                        <span className="sr-only">Print Receipt Automatically</span>
-                        <span
-                          aria-hidden="true"
-                          className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
-                            form.autoPrintReceipt !== false ? 'translate-x-5' : 'translate-x-0'
-                          }`}
-                        />
-                      </button>
-                    </div>
-
                     <div>
                       <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Thermal Receipt Footer Message</label>
                       <input

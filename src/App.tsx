@@ -146,6 +146,7 @@ export default function App() {
   // Keep track of known order and notification IDs to detect newly arrived items from Firestore in real-time
   const knownOrderIdsRef = useRef<Set<string>>(new Set());
   const knownNotifIdsRef = useRef<Set<string>>(new Set());
+  const notifiedOrderIdsRef = useRef<Set<string>>(new Set());
 
   // Authentication & Staff User State
   const [currentUser, setCurrentUser] = useState<StaffUser | null>(() => {
@@ -235,12 +236,22 @@ export default function App() {
   }, [notifications]);
 
   // Trigger Order Arrival Chime and Notification
-  const triggerOrderNotification = (order: BillOrder) => {
-    // 🔔 Play real-time kitchen bell & acoustic order chime!
-    try {
-      playOrderChimeSound();
-    } catch (e) {
-      console.warn('Could not play order chime:', e);
+  const triggerOrderNotification = (order: BillOrder, playSound: boolean = true) => {
+    if (!order || !order.id) return;
+
+    // Guard against duplicate notification and double sound for the same order
+    if (notifiedOrderIdsRef.current.has(order.id)) {
+      return;
+    }
+    notifiedOrderIdsRef.current.add(order.id);
+
+    // 🔔 Play real-time kitchen bell & acoustic order chime once!
+    if (playSound) {
+      try {
+        playOrderChimeSound();
+      } catch (e) {
+        console.warn('Could not play order chime:', e);
+      }
     }
 
     const itemsSummary = order.items && order.items.length > 0 
@@ -249,8 +260,11 @@ export default function App() {
 
     const isQR = order.serverName === 'Table QR Self-Order' || Boolean(order.tableNumber);
 
+    // Deterministic notification ID bound to order ID to prevent Firestore doc duplication
+    const notifId = `notif-order-${order.id}`;
+
     const newNotif: AppNotification = {
-      id: `notif-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+      id: notifId,
       type: isQR ? 'qr_order' : 'order_update',
       title: isQR ? `${order.tableNumber || 'Table'} • QR Self-Order` : `New Order #${order.invoiceNumber}`,
       message: `${order.items.length} dishes ordered by ${order.customerName || 'Guest'} (${order.tableNumber || order.orderType})`,
@@ -269,7 +283,10 @@ export default function App() {
     CloudDatabaseService.saveNotification(newNotif);
     knownNotifIdsRef.current.add(newNotif.id);
 
-    setNotifications(prev => [newNotif, ...prev.filter(n => n.id !== newNotif.id)]);
+    setNotifications(prev => [
+      newNotif, 
+      ...prev.filter(n => n.id !== notifId && (!n.orderId || n.orderId !== order.id))
+    ]);
 
     // Popup alert toast in top right
     setNewOrderAlert({
@@ -318,41 +335,66 @@ export default function App() {
         unsubOrders = CloudDatabaseService.subscribeOrders((cloudOrders) => {
           const list = cloudOrders || [];
           const previousKnown = knownOrderIdsRef.current;
+          const isInitialSync = previousKnown.size === 0;
           const newIncomingOrders = list.filter(o => !previousKnown.has(o.id));
           
-          if (newIncomingOrders.length > 0 && previousKnown.size > 0) {
-            // Trigger notification & chime for newly arrived orders
+          if (newIncomingOrders.length > 0 && !isInitialSync) {
+            // Trigger notification & chime for newly arrived orders not yet notified
             newIncomingOrders.forEach(ord => {
-              triggerOrderNotification(ord);
+              if (!notifiedOrderIdsRef.current.has(ord.id)) {
+                triggerOrderNotification(ord, true);
+              }
             });
           }
 
+          // Populate tracking sets
           knownOrderIdsRef.current = new Set(list.map(o => o.id));
+          list.forEach(o => notifiedOrderIdsRef.current.add(o.id));
           setOrders(list);
         });
 
         unsubNotifications = CloudDatabaseService.subscribeNotifications((cloudNotifs) => {
           const list = cloudNotifs || [];
           const previousKnown = knownNotifIdsRef.current;
+          const isInitialSync = previousKnown.size === 0;
           const newIncomingNotifs = list.filter(n => !previousKnown.has(n.id) && !n.read && n.status !== 'acknowledged');
 
-          if (newIncomingNotifs.length > 0 && previousKnown.size > 0) {
+          if (newIncomingNotifs.length > 0 && !isInitialSync) {
             newIncomingNotifs.forEach(notif => {
               if (notif.type === 'call_server') {
                 try {
                   playStaffAlertChime();
                 } catch (e) {}
                 setActiveStaffAlert(notif);
-              } else if (notif.type === 'qr_order') {
-                try {
-                  playOrderChimeSound();
-                } catch (e) {}
+              } else if (notif.type === 'qr_order' || notif.type === 'order_update') {
+                if (notif.orderId && !notifiedOrderIdsRef.current.has(notif.orderId)) {
+                  notifiedOrderIdsRef.current.add(notif.orderId);
+                  try {
+                    playOrderChimeSound();
+                  } catch (e) {}
+                }
               }
             });
           }
 
           knownNotifIdsRef.current = new Set(list.map(n => n.id));
-          setNotifications(list);
+          
+          // Deduplicate notifications list so duplicates never enter UI
+          const dedupedList: AppNotification[] = [];
+          const seenIds = new Set<string>();
+          const seenOrderIds = new Set<string>();
+
+          for (const notif of list) {
+            if (seenIds.has(notif.id)) continue;
+            if (notif.orderId) {
+              if (seenOrderIds.has(notif.orderId)) continue;
+              seenOrderIds.add(notif.orderId);
+            }
+            seenIds.add(notif.id);
+            dedupedList.push(notif);
+          }
+
+          setNotifications(dedupedList);
         });
 
         unsubExpenses = CloudDatabaseService.subscribeExpenses((cloudExpenses) => {

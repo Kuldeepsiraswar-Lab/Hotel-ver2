@@ -225,10 +225,6 @@ export const CustomerTableOrdering: React.FC<CustomerTableOrderingProps> = ({
     setCart([]);
     setIsCartOpen(false);
 
-    try {
-      playOrderChimeSound();
-    } catch (e) {}
-
     confetti({
       particleCount: 70,
       spread: 60,

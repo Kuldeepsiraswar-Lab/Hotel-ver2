@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { 
   Bell, 
   Check, 
@@ -45,8 +45,26 @@ export const NotificationMenu: React.FC<NotificationMenuProps> = ({
   const [justPlayedChime, setJustPlayedChime] = useState<boolean>(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
-  const unreadCount = notifications.filter(n => !n.read).length;
-  const qrOrdersCount = notifications.filter(n => n.type === 'qr_order').length;
+  // Deduplicate notifications by ID and orderId
+  const uniqueNotifications = useMemo(() => {
+    const list: AppNotification[] = [];
+    const seenIds = new Set<string>();
+    const seenOrderIds = new Set<string>();
+
+    for (const notif of notifications) {
+      if (seenIds.has(notif.id)) continue;
+      if (notif.orderId) {
+        if (seenOrderIds.has(notif.orderId)) continue;
+        seenOrderIds.add(notif.orderId);
+      }
+      seenIds.add(notif.id);
+      list.push(notif);
+    }
+    return list;
+  }, [notifications]);
+
+  const unreadCount = uniqueNotifications.filter(n => !n.read).length;
+  const qrOrdersCount = uniqueNotifications.filter(n => n.type === 'qr_order').length;
 
   // Toggle sound alert
   const handleToggleSound = () => {
@@ -80,7 +98,7 @@ export const NotificationMenu: React.FC<NotificationMenuProps> = ({
     };
   }, [isOpen]);
 
-  const filteredNotifications = notifications.filter(n => {
+  const filteredNotifications = uniqueNotifications.filter(n => {
     if (activeFilter === 'unread') return !n.read;
     if (activeFilter === 'qr') return n.type === 'qr_order';
     return true;

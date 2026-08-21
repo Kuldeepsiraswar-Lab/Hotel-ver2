@@ -2,85 +2,39 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Helper functions
-    function isValidId(id) {
-      return id is string && id.size() > 0 && id.size() <= 128;
-    }
-
-    function incoming() {
-      return request.resource.data;
-    }
-
-    // Default safety catch-all
-    match /{document=**} {
-      allow read, write: if false;
-    }
-
     // Restaurant Profiles
     match /restaurant_profiles/{profileId} {
-      allow read: if isValidId(profileId);
-      allow create, update: if isValidId(profileId) 
-        && incoming().name is string 
-        && incoming().name.size() > 0 
-        && incoming().name.size() <= 200;
-      allow delete: if isValidId(profileId);
+      allow read, write: if true;
     }
 
-    // Menu Items
+    // Menu Items & Catalog
     match /menu_items/{itemId} {
-      allow read: if isValidId(itemId);
-      allow create, update: if isValidId(itemId) 
-        && incoming().name is string 
-        && incoming().name.size() > 0 
-        && incoming().name.size() <= 200
-        && incoming().price is number;
-      allow delete: if isValidId(itemId);
+      allow read, write: if true;
     }
 
-    // Orders & Invoices (Dine-in, Takeaway, Delivery, Table QR Self-Orders)
+    // Orders & Table Invoices
     match /orders/{orderId} {
-      allow read: if isValidId(orderId);
-      allow create, update: if isValidId(orderId) 
-        && incoming().id is string
-        && incoming().total is number;
-      allow delete: if isValidId(orderId);
+      allow read, write: if true;
     }
 
-    // Expenses & Vendor Records
+    // Expenses & Vendor Ledger
     match /expenses/{expenseId} {
-      allow read: if isValidId(expenseId);
-      allow create, update: if isValidId(expenseId)
-        && incoming().id is string
-        && incoming().amount is number;
-      allow delete: if isValidId(expenseId);
+      allow read, write: if true;
     }
 
-    // Staff Accounts & Access Profiles
+    // Staff Accounts & PIN Authentication
     match /staff_accounts/{staffId} {
-      allow read: if isValidId(staffId);
-      allow create, update: if isValidId(staffId)
-        && incoming().id is string
-        && incoming().displayName is string
-        && incoming().displayName.size() > 0;
-      allow delete: if isValidId(staffId);
+      allow read, write: if true;
     }
 
-    // Live Staff Service Notifications (Waiter Call, Drinks, Bill, Cutlery)
+    // Live Staff Notifications & Table QR Call Alerts
     match /notifications/{notifId} {
-      allow read: if isValidId(notifId);
-      allow create, update: if isValidId(notifId)
-        && incoming().id is string
-        && incoming().type is string;
-      allow delete: if isValidId(notifId);
+      allow read, write: if true;
     }
 
     // Menu Categories
     match /menu_categories/{catId} {
-      allow read: if isValidId(catId);
-      allow create, update: if isValidId(catId)
-        && incoming().name is string
-        && incoming().name.size() > 0;
-      allow delete: if isValidId(catId);
+      allow read, write: if true;
     }
   }
 }

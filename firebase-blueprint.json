@@ -93,6 +93,33 @@
         "notes": { "type": "string" }
       },
       "required": ["id", "displayName", "role", "pin"]
+    },
+    "notifications": {
+      "title": "App Notification",
+      "description": "Live staff call requests (waiter, bill, drinks, cutlery) and table self-orders",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "type": { "type": "string" },
+        "title": { "type": "string" },
+        "message": { "type": "string" },
+        "tableNumber": { "type": "string" },
+        "timestamp": { "type": "string" },
+        "read": { "type": "boolean" },
+        "serviceType": { "type": "string" },
+        "status": { "type": "string" }
+      },
+      "required": ["id", "type", "title", "message", "timestamp"]
+    },
+    "menu_categories": {
+      "title": "Menu Category",
+      "description": "Custom restaurant menu category tags and ordering groups",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" }
+      },
+      "required": ["id", "name"]
     }
   },
   "firestore": {
@@ -124,6 +151,18 @@
       "/staff_accounts/{staffId}": {
         "schema": "#/entities/staff_accounts",
         "description": "Staff roster accounts, cashier credentials, and admin profiles"
+      }
+    },
+    "notifications": {
+      "/notifications/{notifId}": {
+        "schema": "#/entities/notifications",
+        "description": "Staff service alert requests and real-time order notifications"
+      }
+    },
+    "menu_categories": {
+      "/menu_categories/{catId}": {
+        "schema": "#/entities/menu_categories",
+        "description": "Menu category tags"
       }
     }
   }

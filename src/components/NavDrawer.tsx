@@ -136,19 +136,19 @@ export const NavDrawer: React.FC<NavDrawerProps> = ({
       isAllowedForKitchen: true,
     },
     {
-      id: 'menu' as NavTab,
-      label: 'Menu & Recipe Costing',
-      subLabel: 'Dishes catalog, food cost % & pricing management',
-      icon: ChefHat,
-      isAllowedForKitchen: false,
-    },
-    {
       id: 'tableqr' as NavTab,
       label: 'Table QR Self-Order',
       subLabel: 'Digital table standees, guest Wi-Fi & customer ordering',
       icon: QrCode,
       badge: 'QR Menu',
       badgeColor: 'bg-indigo-500 text-white font-black',
+      isAllowedForKitchen: false,
+    },
+    {
+      id: 'menu' as NavTab,
+      label: 'Menu & Recipe Costing',
+      subLabel: 'Dishes catalog, food cost % & pricing management',
+      icon: ChefHat,
       isAllowedForKitchen: false,
     },
     {

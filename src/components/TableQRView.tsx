@@ -17,7 +17,10 @@ import {
   CheckCircle2,
   Clock,
   Radio,
-  Eye
+  Eye,
+  BellRing,
+  Wine,
+  Receipt
 } from 'lucide-react';
 import QRCode from 'qrcode';
 import { RestaurantProfile, BillOrder, StaffUser } from '../types';
@@ -27,6 +30,7 @@ interface TableQRViewProps {
   orders: BillOrder[];
   currentUser: StaffUser | null;
   onOpenCustomerView: (tableNumber: string) => void;
+  onServiceRequest?: (tableNumber: string, requestType: 'drink' | 'bill' | 'waiter' | 'cutlery' | 'custom', note?: string) => void;
 }
 
 const DEFAULT_TABLES = [
@@ -40,6 +44,7 @@ export const TableQRView: React.FC<TableQRViewProps> = ({
   orders,
   currentUser,
   onOpenCustomerView,
+  onServiceRequest,
 }) => {
   const [tablesList, setTablesList] = useState<string[]>(() => {
     try {
@@ -647,6 +652,63 @@ export const TableQRView: React.FC<TableQRViewProps> = ({
                   Luxury Dark Card
                 </button>
               </div>
+            </div>
+          </div>
+
+          {/* Instant Staff Alert Live Testing Card */}
+          <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="p-1.5 rounded-lg bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400">
+                  <BellRing className="w-4 h-4 animate-bounce" />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-sm text-slate-900 dark:text-slate-100 uppercase tracking-wider">
+                    Instant Staff Alert Dispatcher
+                  </h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    Test real-time buzzer & chime notifications for <span className="font-bold text-amber-600 dark:text-amber-400">{selectedTable}</span> across POS, KDS, & mobile
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1">
+              <button
+                type="button"
+                onClick={() => onServiceRequest && onServiceRequest(selectedTable, 'waiter', 'Assistance needed')}
+                className="p-2.5 bg-amber-50 dark:bg-amber-950/40 hover:bg-amber-100 dark:hover:bg-amber-900/60 border border-amber-300 dark:border-amber-700/60 rounded-xl text-xs font-bold text-amber-900 dark:text-amber-200 flex flex-col items-center gap-1.5 cursor-pointer transition-all hover:scale-[1.02] shadow-2xs"
+              >
+                <BellRing className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                <span>Call Waiter</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => onServiceRequest && onServiceRequest(selectedTable, 'drink', 'Water refill / drinks')}
+                className="p-2.5 bg-blue-50 dark:bg-blue-950/40 hover:bg-blue-100 dark:hover:bg-blue-900/60 border border-blue-300 dark:border-blue-700/60 rounded-xl text-xs font-bold text-blue-900 dark:text-blue-200 flex flex-col items-center gap-1.5 cursor-pointer transition-all hover:scale-[1.02] shadow-2xs"
+              >
+                <Wine className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                <span>Water / Drinks</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => onServiceRequest && onServiceRequest(selectedTable, 'bill', 'Bill & payment terminal')}
+                className="p-2.5 bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 border border-emerald-300 dark:border-emerald-700/60 rounded-xl text-xs font-bold text-emerald-900 dark:text-emerald-200 flex flex-col items-center gap-1.5 cursor-pointer transition-all hover:scale-[1.02] shadow-2xs"
+              >
+                <Receipt className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                <span>Request Bill</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => onServiceRequest && onServiceRequest(selectedTable, 'cutlery', 'Extra napkins & cutlery')}
+                className="p-2.5 bg-purple-50 dark:bg-purple-950/40 hover:bg-purple-100 dark:hover:bg-purple-900/60 border border-purple-300 dark:border-purple-700/60 rounded-xl text-xs font-bold text-purple-900 dark:text-purple-200 flex flex-col items-center gap-1.5 cursor-pointer transition-all hover:scale-[1.02] shadow-2xs"
+              >
+                <Utensils className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+                <span>Cutlery & Napkins</span>
+              </button>
             </div>
           </div>
 

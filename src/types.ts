@@ -148,6 +148,10 @@ export interface AppNotification {
   itemsCount?: number;
   itemsSummary?: string;
   customerName?: string;
+  serviceType?: 'drink' | 'bill' | 'waiter' | 'cutlery' | 'custom';
+  status?: 'pending' | 'acknowledged' | 'completed';
+  acknowledgedBy?: string;
+  acknowledgedAt?: string;
 }
 
 export interface RestaurantProfile {

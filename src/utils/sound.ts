@@ -189,6 +189,9 @@ export function playKitchenBell(): void {
   try {
     const ctx = getAudioContext();
     if (!ctx) return;
+    if (ctx.state === 'suspended') {
+      ctx.resume().catch(() => {});
+    }
 
     const now = ctx.currentTime;
     const osc = ctx.createOscillator();
@@ -208,6 +211,66 @@ export function playKitchenBell(): void {
     osc.stop(now + 0.8);
   } catch (err) {
     console.warn('Kitchen bell sound failed:', err);
+  }
+}
+
+/**
+ * Plays an urgent, distinctive two-tone high-frequency staff call alert chime (Ding-Ding!).
+ * Used specifically for Instant Staff Alerts (Waiter call, Drinks refill, Bill request, Cutlery).
+ */
+export function playStaffAlertChime(): void {
+  if (!isSoundEnabled()) return;
+  try {
+    const ctx = getAudioContext();
+    if (!ctx) return;
+    if (ctx.state === 'suspended') {
+      ctx.resume().catch(() => {});
+    }
+
+    const now = ctx.currentTime;
+
+    // Double chime: High C#6 (1108Hz) -> High E6 (1318Hz) -> High A6 (1760Hz)
+    const tones = [
+      { freq: 1108.73, time: now, duration: 0.35, gain: 0.35 },
+      { freq: 1318.51, time: now + 0.14, duration: 0.45, gain: 0.4 },
+      { freq: 1760.00, time: now + 0.30, duration: 0.9, gain: 0.45 }
+    ];
+
+    tones.forEach(({ freq, time, duration, gain }) => {
+      const osc = ctx.createOscillator();
+      const gainNode = ctx.createGain();
+
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(freq, time);
+
+      gainNode.gain.setValueAtTime(0, time);
+      gainNode.gain.linearRampToValueAtTime(gain, time + 0.01);
+      gainNode.gain.exponentialRampToValueAtTime(0.0001, time + duration);
+
+      osc.connect(gainNode);
+      gainNode.connect(ctx.destination);
+
+      osc.start(time);
+      osc.stop(time + duration);
+
+      // Add high metallic bell sparkle
+      const overtone = ctx.createOscillator();
+      const overtoneGain = ctx.createGain();
+      overtone.type = 'triangle';
+      overtone.frequency.setValueAtTime(freq * 2.5, time);
+
+      overtoneGain.gain.setValueAtTime(0, time);
+      overtoneGain.gain.linearRampToValueAtTime(gain * 0.15, time + 0.01);
+      overtoneGain.gain.exponentialRampToValueAtTime(0.0001, time + (duration * 0.5));
+
+      overtone.connect(overtoneGain);
+      overtoneGain.connect(ctx.destination);
+
+      overtone.start(time);
+      overtone.stop(time + (duration * 0.5));
+    });
+  } catch (err) {
+    console.warn('Staff alert chime playback failed:', err);
   }
 }
 

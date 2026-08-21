@@ -33,9 +33,25 @@ import { LoginModal } from './components/LoginModal';
 import { StaffManagementModal } from './components/StaffManagementModal';
 import { DailySalesSummaryModal } from './components/DailySalesSummaryModal';
 import { CloudDatabaseService } from './firebase';
-import { playOrderChimeSound, playKitchenBell } from './utils/sound';
+import { playOrderChimeSound, playKitchenBell, playStaffAlertChime } from './utils/sound';
 import { generateId } from './utils/formatters';
-import { CheckCircle2, Cloud, RefreshCw, Bell, QrCode, Volume2, Shield } from 'lucide-react';
+import { 
+  CheckCircle2, 
+  Cloud, 
+  RefreshCw, 
+  Bell, 
+  QrCode, 
+  Volume2, 
+  Shield,
+  BellRing,
+  Wine,
+  Receipt as ReceiptIcon,
+  Utensils,
+  Check,
+  X,
+  Flame,
+  AlertCircle
+} from 'lucide-react';
 import { isKitchenStaff, canUserAccessTab, canAccessSettings, canAccessStaffManagement, canAccessTableQR, isAdminOrOwner, isManagerOrOwner } from './utils/permissions';
 
 const STORAGE_KEYS = {
@@ -81,6 +97,9 @@ export default function App() {
   // Table QR Manager Modal State
   const [isTableQROpen, setIsTableQROpen] = useState<boolean>(false);
   const [newOrderAlert, setNewOrderAlert] = useState<{ table: string; invoice: string; itemsCount: number } | null>(null);
+  
+  // Instant Staff Alert State (Waiter, Drinks, Bill, Cutlery)
+  const [activeStaffAlert, setActiveStaffAlert] = useState<AppNotification | null>(null);
 
   // Restaurant Profile State
   const [profile, setProfile] = useState<RestaurantProfile>(defaultRestaurantProfile);
@@ -100,8 +119,9 @@ export default function App() {
   // Notifications State (Table QR Orders, live alerts)
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
 
-  // Keep track of known order IDs to detect newly arrived orders from Firestore in real-time
+  // Keep track of known order and notification IDs to detect newly arrived items from Firestore in real-time
   const knownOrderIdsRef = useRef<Set<string>>(new Set());
+  const knownNotifIdsRef = useRef<Set<string>>(new Set());
 
   // Authentication & Staff User State
   const [currentUser, setCurrentUser] = useState<StaffUser | null>(() => {
@@ -221,6 +241,10 @@ export default function App() {
       customerName: order.customerName,
     };
 
+    // Save notification to Firestore
+    CloudDatabaseService.saveNotification(newNotif);
+    knownNotifIdsRef.current.add(newNotif.id);
+
     setNotifications(prev => [newNotif, ...prev.filter(n => n.id !== newNotif.id)]);
 
     // Popup alert toast in top right
@@ -243,6 +267,7 @@ export default function App() {
     let unsubExpenses: (() => void) | undefined;
     let unsubCategories: (() => void) | undefined;
     let unsubStaff: (() => void) | undefined;
+    let unsubNotifications: (() => void) | undefined;
 
     const setupCloudDatabase = async () => {
       try {
@@ -282,6 +307,30 @@ export default function App() {
           setOrders(list);
         });
 
+        unsubNotifications = CloudDatabaseService.subscribeNotifications((cloudNotifs) => {
+          const list = cloudNotifs || [];
+          const previousKnown = knownNotifIdsRef.current;
+          const newIncomingNotifs = list.filter(n => !previousKnown.has(n.id) && !n.read && n.status !== 'acknowledged');
+
+          if (newIncomingNotifs.length > 0 && previousKnown.size > 0) {
+            newIncomingNotifs.forEach(notif => {
+              if (notif.type === 'call_server') {
+                try {
+                  playStaffAlertChime();
+                } catch (e) {}
+                setActiveStaffAlert(notif);
+              } else if (notif.type === 'qr_order') {
+                try {
+                  playOrderChimeSound();
+                } catch (e) {}
+              }
+            });
+          }
+
+          knownNotifIdsRef.current = new Set(list.map(n => n.id));
+          setNotifications(list);
+        });
+
         unsubExpenses = CloudDatabaseService.subscribeExpenses((cloudExpenses) => {
           setExpenses(cloudExpenses || []);
         });
@@ -307,6 +356,7 @@ export default function App() {
       if (unsubExpenses) unsubExpenses();
       if (unsubCategories) unsubCategories();
       if (unsubStaff) unsubStaff();
+      if (unsubNotifications) unsubNotifications();
     };
   }, []);
 
@@ -445,14 +495,88 @@ export default function App() {
 
   const handleMarkNotificationAsRead = (notifId: string) => {
     setNotifications(prev => prev.map(n => n.id === notifId ? { ...n, read: true } : n));
+    CloudDatabaseService.markNotificationRead(notifId);
   };
 
   const handleMarkAllNotificationsAsRead = () => {
     setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+    CloudDatabaseService.markAllNotificationsRead();
   };
 
   const handleClearAllNotifications = () => {
     setNotifications([]);
+    CloudDatabaseService.clearAllNotifications();
+  };
+
+  const handleAcknowledgeStaffAlert = (notifId: string) => {
+    const staffName = currentUser?.displayName || 'Staff';
+    CloudDatabaseService.markNotificationAcknowledged(notifId, staffName);
+    setNotifications(prev => prev.map(n => n.id === notifId ? { 
+      ...n, 
+      read: true, 
+      status: 'acknowledged',
+      acknowledgedBy: staffName,
+      acknowledgedAt: new Date().toISOString()
+    } : n));
+    if (activeStaffAlert?.id === notifId) {
+      setActiveStaffAlert(null);
+    }
+    showCloudToast(`Staff attending table (${staffName})`);
+  };
+
+  const handleTriggerServiceRequest = (
+    table: string, 
+    requestType: 'drink' | 'bill' | 'waiter' | 'cutlery' | 'custom', 
+    note?: string
+  ) => {
+    const title = requestType === 'bill'
+      ? `🧾 Bill & Payment (${table})`
+      : requestType === 'drink'
+      ? `🍷 Drinks / Water (${table})`
+      : requestType === 'cutlery'
+      ? `🍴 Cutlery & Napkins (${table})`
+      : `🛎️ Waiter Call (${table})`;
+
+    const message = note
+      ? `${table} notes: ${note}`
+      : requestType === 'bill'
+      ? `Guest at ${table} requested the bill & payment terminal.`
+      : requestType === 'drink'
+      ? `Guest at ${table} requested drinks / water refill.`
+      : requestType === 'cutlery'
+      ? `Guest at ${table} requested cutlery / napkins.`
+      : `Guest at ${table} requested server assistance.`;
+
+    const newNotif: AppNotification = {
+      id: `notif-staff-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+      type: 'call_server',
+      title,
+      message,
+      tableNumber: table,
+      timestamp: new Date().toISOString(),
+      read: false,
+      serviceType: requestType,
+      status: 'pending',
+    };
+
+    // 1. Immediately save to Firestore (broadcasts to all staff devices & POS screens)
+    CloudDatabaseService.saveNotification(newNotif);
+
+    // 2. Mark in local known set
+    knownNotifIdsRef.current.add(newNotif.id);
+
+    // 3. Update local state
+    setNotifications(prev => [newNotif, ...prev.filter(n => n.id !== newNotif.id)]);
+
+    // 4. Play alert chime
+    try {
+      playStaffAlertChime();
+    } catch (e) {
+      console.warn('Staff alert chime failed:', e);
+    }
+
+    // 5. Light up prominent active staff alert banner
+    setActiveStaffAlert(newNotif);
   };
 
   // Staff User Auth Handlers
@@ -759,40 +883,7 @@ export default function App() {
         onUpdateOrderStatus={(order) => {
           handleSaveOrder(order);
         }}
-        onServiceRequest={(table, requestType, note) => {
-          const title = requestType === 'bill'
-            ? `🧾 Bill Requested (${table})`
-            : requestType === 'drink'
-            ? `🍷 Drinks / Water Request (${table})`
-            : requestType === 'cutlery'
-            ? `🍴 Cutlery Request (${table})`
-            : `🛎️ Waiter Call (${table})`;
-
-          const message = note
-            ? `${table} notes: ${note}`
-            : requestType === 'bill'
-            ? `Guest at ${table} requested the bill & payment.`
-            : requestType === 'drink'
-            ? `Guest at ${table} requested drinks / water refill.`
-            : requestType === 'cutlery'
-            ? `Guest at ${table} requested cutlery / napkins.`
-            : `Guest at ${table} requested server assistance.`;
-
-          const newNotif: AppNotification = {
-            id: generateId('notif'),
-            type: 'call_server',
-            title,
-            message,
-            tableNumber: table,
-            timestamp: new Date().toISOString(),
-            read: false,
-          };
-
-          setNotifications(prev => [newNotif, ...prev.slice(0, 49)]);
-          try {
-            playKitchenBell();
-          } catch (e) {}
-        }}
+        onServiceRequest={handleTriggerServiceRequest}
         onExitCustomerView={() => {
           setCustomerTableMode(null);
           if (typeof window !== 'undefined') {
@@ -813,6 +904,67 @@ export default function App() {
           <div className="text-xs">
             <p className="font-bold text-white">Google Cloud Firestore</p>
             <p className="text-slate-300 text-[11px]">{cloudToast}</p>
+          </div>
+        </div>
+      )}
+
+      {/* 🚨 Priority Instant Staff Call Alert Banner (Waiter, Bill, Drinks, Cutlery) */}
+      {activeStaffAlert && (
+        <div className="fixed top-3 left-1/2 -translate-x-1/2 z-50 w-full max-w-xl px-4 animate-in slide-in-from-top-4 duration-300 pointer-events-auto">
+          <div className="bg-slate-950 border-2 border-rose-500 text-white p-3.5 sm:p-4 rounded-2xl shadow-2xl flex items-center justify-between gap-3 sm:gap-4 ring-4 ring-rose-500/20 backdrop-blur-md">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-10 h-10 rounded-xl bg-rose-500 text-white flex items-center justify-center font-bold shrink-0 animate-bounce shadow-lg shadow-rose-500/30">
+                {activeStaffAlert.serviceType === 'drink' ? (
+                  <Wine className="w-5 h-5" />
+                ) : activeStaffAlert.serviceType === 'bill' ? (
+                  <ReceiptIcon className="w-5 h-5" />
+                ) : activeStaffAlert.serviceType === 'cutlery' ? (
+                  <Utensils className="w-5 h-5" />
+                ) : (
+                  <BellRing className="w-5 h-5" />
+                )}
+              </div>
+              <div className="min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="px-2 py-0.5 bg-rose-500/20 text-rose-300 font-extrabold text-[11px] rounded-md border border-rose-500/40 uppercase tracking-wider">
+                    {activeStaffAlert.serviceType === 'bill'
+                      ? 'Bill & Payment'
+                      : activeStaffAlert.serviceType === 'drink'
+                      ? 'Drinks / Water'
+                      : activeStaffAlert.serviceType === 'cutlery'
+                      ? 'Cutlery / Napkins'
+                      : 'Waiter Summoned'}
+                  </span>
+                  <span className="text-white font-black text-sm sm:text-base">
+                    {activeStaffAlert.tableNumber || 'Table'}
+                  </span>
+                </div>
+                <p className="text-xs text-slate-300 truncate mt-0.5 max-w-xs sm:max-w-md">
+                  {activeStaffAlert.message}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={() => handleAcknowledgeStaffAlert(activeStaffAlert.id)}
+                className="px-3 py-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black rounded-xl text-xs transition-all shadow-md flex items-center gap-1.5 cursor-pointer"
+                title="Acknowledge and mark staff as attending table"
+              >
+                <Check className="w-4 h-4" />
+                <span className="hidden sm:inline">Attending</span>
+              </button>
+              
+              <button
+                type="button"
+                onClick={() => setActiveStaffAlert(null)}
+                className="p-2 bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white rounded-xl transition-all cursor-pointer"
+                title="Dismiss alert banner"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -971,6 +1123,7 @@ export default function App() {
                 onOpenCustomerView={(tableNum) => {
                   setCustomerTableMode(tableNum);
                 }}
+                onServiceRequest={handleTriggerServiceRequest}
               />
             )}
           </>

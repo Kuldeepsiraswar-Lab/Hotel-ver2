@@ -13,7 +13,7 @@ import {
   orderBy
 } from 'firebase/firestore';
 import firebaseConfig from '../firebase-applet-config.json';
-import { MenuItem, BillOrder, Expense, RestaurantProfile, StaffUser } from './types';
+import { MenuItem, BillOrder, Expense, RestaurantProfile, StaffUser, AppNotification } from './types';
 
 // Initialize Firebase App
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
@@ -34,6 +34,7 @@ export const COLLECTIONS = {
   EXPENSES: 'expenses',
   CATEGORIES: 'menu_categories',
   STAFF: 'staff_accounts',
+  NOTIFICATIONS: 'notifications',
 };
 
 /**
@@ -303,6 +304,98 @@ export const CloudDatabaseService = {
     });
   },
 
+  // ================= NOTIFICATIONS & INSTANT STAFF ALERTS =================
+  async saveNotification(notification: AppNotification) {
+    try {
+      const cleanData = sanitizeForFirestore(notification);
+      const docRef = doc(db, COLLECTIONS.NOTIFICATIONS, notification.id);
+      await setDoc(docRef, cleanData, { merge: true });
+      return true;
+    } catch (err) {
+      handleFirestoreError(err, OperationType.WRITE, `${COLLECTIONS.NOTIFICATIONS}/${notification.id}`);
+      return false;
+    }
+  },
+
+  async deleteNotification(notificationId: string) {
+    try {
+      const docRef = doc(db, COLLECTIONS.NOTIFICATIONS, notificationId);
+      await deleteDoc(docRef);
+      return true;
+    } catch (err) {
+      handleFirestoreError(err, OperationType.DELETE, `${COLLECTIONS.NOTIFICATIONS}/${notificationId}`);
+      return false;
+    }
+  },
+
+  async markNotificationRead(notificationId: string) {
+    try {
+      const docRef = doc(db, COLLECTIONS.NOTIFICATIONS, notificationId);
+      await setDoc(docRef, { read: true }, { merge: true });
+      return true;
+    } catch (err) {
+      handleFirestoreError(err, OperationType.UPDATE, `${COLLECTIONS.NOTIFICATIONS}/${notificationId}`);
+      return false;
+    }
+  },
+
+  async markNotificationAcknowledged(notificationId: string, acknowledgedBy?: string) {
+    try {
+      const docRef = doc(db, COLLECTIONS.NOTIFICATIONS, notificationId);
+      await setDoc(docRef, { 
+        read: true, 
+        status: 'acknowledged',
+        ...(acknowledgedBy ? { acknowledgedBy } : {}),
+        acknowledgedAt: new Date().toISOString()
+      }, { merge: true });
+      return true;
+    } catch (err) {
+      handleFirestoreError(err, OperationType.UPDATE, `${COLLECTIONS.NOTIFICATIONS}/${notificationId}`);
+      return false;
+    }
+  },
+
+  async markAllNotificationsRead() {
+    try {
+      const snap = await getDocs(collection(db, COLLECTIONS.NOTIFICATIONS));
+      const batch = writeBatch(db);
+      snap.forEach(d => batch.update(d.ref, { read: true }));
+      await batch.commit();
+      return true;
+    } catch (err) {
+      handleFirestoreError(err, OperationType.UPDATE, COLLECTIONS.NOTIFICATIONS);
+      return false;
+    }
+  },
+
+  async clearAllNotifications() {
+    try {
+      const snap = await getDocs(collection(db, COLLECTIONS.NOTIFICATIONS));
+      const batch = writeBatch(db);
+      snap.forEach(d => batch.delete(d.ref));
+      await batch.commit();
+      return true;
+    } catch (err) {
+      handleFirestoreError(err, OperationType.DELETE, COLLECTIONS.NOTIFICATIONS);
+      return false;
+    }
+  },
+
+  subscribeNotifications(onUpdate: (notifications: AppNotification[]) => void) {
+    const q = query(collection(db, COLLECTIONS.NOTIFICATIONS));
+    return onSnapshot(q, (snapshot) => {
+      const notifications: AppNotification[] = [];
+      snapshot.forEach((docSnap) => {
+        notifications.push(docSnap.data() as AppNotification);
+      });
+      // Sort newest first
+      notifications.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+      onUpdate(notifications);
+    }, (error) => {
+      handleFirestoreError(error, OperationType.LIST, COLLECTIONS.NOTIFICATIONS);
+    });
+  },
+
   // ================= SEED ALL DATA INTO GOOGLE CLOUD =================
   async syncAllToCloud(data: {
     profile: RestaurantProfile;
@@ -391,7 +484,13 @@ export const CloudDatabaseService = {
       expSnap.forEach(d => expBatch.delete(d.ref));
       await expBatch.commit();
 
-      // 4. Reset categories
+      // 4. Delete notifications
+      const notifSnap = await getDocs(collection(db, COLLECTIONS.NOTIFICATIONS));
+      const notifBatch = writeBatch(db);
+      notifSnap.forEach(d => notifBatch.delete(d.ref));
+      await notifBatch.commit();
+
+      // 5. Reset categories
       await setDoc(doc(db, COLLECTIONS.CATEGORIES, 'main_categories'), { list: [] });
 
       return true;

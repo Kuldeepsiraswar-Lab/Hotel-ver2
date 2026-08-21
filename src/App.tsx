@@ -18,6 +18,7 @@ import {
   defaultStaffAccounts
 } from './data/defaultData';
 import { Navbar, NavTab } from './components/Navbar';
+import { Sidebar } from './components/Sidebar';
 import { POSBilling } from './components/POSBilling';
 import { InvoicesList } from './components/InvoicesList';
 import { ExpenseTracker } from './components/ExpenseTracker';
@@ -69,6 +70,28 @@ const STORAGE_KEYS = {
 export default function App() {
   // Navigation State
   const [activeTab, setActiveTab] = useState<NavTab>('pos');
+
+  // Collapsible Sidebar & Icon Bar Navigation State
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(() => {
+    try {
+      const saved = localStorage.getItem('ristorante_sidebar_collapsed_v1');
+      return saved === 'true';
+    } catch {
+      return false;
+    }
+  });
+
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState<boolean>(false);
+
+  const handleToggleSidebarCollapse = () => {
+    setIsSidebarCollapsed((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem('ristorante_sidebar_collapsed_v1', String(next));
+      } catch {}
+      return next;
+    });
+  };
 
   const handleSelectTab = (tab: NavTab) => {
     if (isKitchenStaff(currentUser)) {
@@ -996,13 +1019,15 @@ export default function App() {
         </div>
       )}
 
-      {/* Top Main Navigation Bar */}
-      <Navbar
+      {/* Collapsible Sidebar & Icon Bar Navigation */}
+      <Sidebar
+        isCollapsed={isSidebarCollapsed}
+        onToggleCollapse={handleToggleSidebarCollapse}
+        isMobileOpen={isMobileSidebarOpen}
+        onCloseMobile={() => setIsMobileSidebarOpen(false)}
         activeTab={activeTab}
         onSelectTab={handleSelectTab}
         profile={profile}
-        orders={orders}
-        notifications={notifications}
         currentUser={currentUser}
         openOrdersCount={openOrdersCount}
         activeKitchenOrdersCount={activeKitchenOrdersCount}
@@ -1021,115 +1046,150 @@ export default function App() {
           setIsDailySummaryOpen(true);
         }}
         onCloseTerminal={handleCloseTerminal}
-        onViewOrder={(order) => setViewingInvoice(order)}
-        onMarkAsRead={handleMarkNotificationAsRead}
-        onMarkAllAsRead={handleMarkAllNotificationsAsRead}
-        onClearAllNotifications={handleClearAllNotifications}
       />
 
-      {/* Main Content Area */}
-      <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8">
-        {/* If Kitchen Staff role, exclusively display Kitchen View */}
-        {isKitchenStaff(currentUser) ? (
-          <KitchenView
-            orders={orders}
-            menuItems={menuItems}
-            profile={profile}
-            currentUser={currentUser}
-            onSaveOrder={handleSaveOrder}
-            onViewInvoice={(order) => setViewingInvoice(order)}
-          />
-        ) : (
-          <>
-            {activeTab === 'pos' && (
-              <POSBilling
-                menuItems={menuItems}
-                existingOrders={orders}
-                profile={profile}
-                categories={categories}
-                currentUser={currentUser}
-                onSaveOrder={handleSaveOrder}
-                onViewInvoice={(order) => setViewingInvoice(order)}
-                onOpenTableQR={handleOpenTableQR}
-                onCloseTerminal={handleCloseTerminal}
-                onOpenDailySummary={() => {
-                  setIsCloseoutTrigger(false);
-                  setIsDailySummaryOpen(true);
-                }}
-              />
-            )}
+      {/* Main Workspace Layout Container (Adapts width dynamically to Collapsed Icon Bar vs Expanded Sidebar) */}
+      <div className={`min-h-screen flex flex-col transition-all duration-300 ease-in-out ${
+        isSidebarCollapsed ? 'md:pl-20' : 'md:pl-68'
+      }`}>
+        {/* Top Main Navigation Bar */}
+        <Navbar
+          activeTab={activeTab}
+          onSelectTab={handleSelectTab}
+          profile={profile}
+          orders={orders}
+          notifications={notifications}
+          currentUser={currentUser}
+          openOrdersCount={openOrdersCount}
+          activeKitchenOrdersCount={activeKitchenOrdersCount}
+          unpaidExpensesCount={unpaidExpensesCount}
+          isCloudSyncing={isCloudSyncing}
+          cloudError={cloudError}
+          onManualCloudSync={handleManualCloudSync}
+          onOpenSettings={handleOpenSettings}
+          onOpenTableQR={handleOpenTableQR}
+          onOpenStaffManagement={handleOpenStaffManagement}
+          onOpenLogin={() => setIsLoginModalOpen(true)}
+          onLockTerminal={handleLockTerminal}
+          onLogout={handleLogout}
+          onOpenDailySummary={() => {
+            setIsCloseoutTrigger(false);
+            setIsDailySummaryOpen(true);
+          }}
+          onCloseTerminal={handleCloseTerminal}
+          onViewOrder={(order) => setViewingInvoice(order)}
+          onMarkAsRead={handleMarkNotificationAsRead}
+          onMarkAllAsRead={handleMarkAllNotificationsAsRead}
+          onClearAllNotifications={handleClearAllNotifications}
+          isSidebarCollapsed={isSidebarCollapsed}
+          onToggleSidebarCollapse={handleToggleSidebarCollapse}
+          onOpenMobileSidebar={() => setIsMobileSidebarOpen(true)}
+        />
 
-            {activeTab === 'kitchen' && (
-              <KitchenView
-                orders={orders}
-                menuItems={menuItems}
-                profile={profile}
-                currentUser={currentUser}
-                onSaveOrder={handleSaveOrder}
-                onViewInvoice={(order) => setViewingInvoice(order)}
-              />
-            )}
+        {/* Main Content Area */}
+        <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8">
+          {/* If Kitchen Staff role, exclusively display Kitchen View */}
+          {isKitchenStaff(currentUser) ? (
+            <KitchenView
+              orders={orders}
+              menuItems={menuItems}
+              profile={profile}
+              currentUser={currentUser}
+              onSaveOrder={handleSaveOrder}
+              onViewInvoice={(order) => setViewingInvoice(order)}
+            />
+          ) : (
+            <>
+              {activeTab === 'pos' && (
+                <POSBilling
+                  menuItems={menuItems}
+                  existingOrders={orders}
+                  profile={profile}
+                  categories={categories}
+                  currentUser={currentUser}
+                  onSaveOrder={handleSaveOrder}
+                  onViewInvoice={(order) => setViewingInvoice(order)}
+                  onOpenTableQR={handleOpenTableQR}
+                  onCloseTerminal={handleCloseTerminal}
+                  onOpenDailySummary={() => {
+                    setIsCloseoutTrigger(false);
+                    setIsDailySummaryOpen(true);
+                  }}
+                />
+              )}
 
-            {activeTab === 'invoices' && (
-              <InvoicesList
-                orders={orders}
-                menuItems={menuItems}
-                profile={profile}
-                currentUser={currentUser}
-                onViewInvoice={(order) => setViewingInvoice(order)}
-                onSaveOrder={handleSaveOrder}
-                onDeleteOrder={handleDeleteOrder}
-              />
-            )}
+              {activeTab === 'kitchen' && (
+                <KitchenView
+                  orders={orders}
+                  menuItems={menuItems}
+                  profile={profile}
+                  currentUser={currentUser}
+                  onSaveOrder={handleSaveOrder}
+                  onViewInvoice={(order) => setViewingInvoice(order)}
+                />
+              )}
 
-            {activeTab === 'expenses' && (
-              <ExpenseTracker
-                expenses={expenses}
-                profile={profile}
-                currentUser={currentUser}
-                onSaveExpense={handleSaveExpense}
-                onDeleteExpense={handleDeleteExpense}
-                onOpenAIScanner={() => setIsAIScannerOpen(true)}
-              />
-            )}
+              {activeTab === 'invoices' && (
+                <InvoicesList
+                  orders={orders}
+                  menuItems={menuItems}
+                  profile={profile}
+                  currentUser={currentUser}
+                  onViewInvoice={(order) => setViewingInvoice(order)}
+                  onSaveOrder={handleSaveOrder}
+                  onDeleteOrder={handleDeleteOrder}
+                />
+              )}
 
-            {activeTab === 'financials' && (
-              <FinancialDashboard
-                orders={orders}
-                expenses={expenses}
-                menuItems={menuItems}
-                profile={profile}
-              />
-            )}
+              {activeTab === 'expenses' && (
+                <ExpenseTracker
+                  expenses={expenses}
+                  profile={profile}
+                  currentUser={currentUser}
+                  onSaveExpense={handleSaveExpense}
+                  onDeleteExpense={handleDeleteExpense}
+                  onOpenAIScanner={() => setIsAIScannerOpen(true)}
+                />
+              )}
 
-            {activeTab === 'menu' && (
-              <MenuManager
-                menuItems={menuItems}
-                categories={categories}
-                profile={profile}
-                currentUser={currentUser}
-                onSaveMenuItem={handleSaveMenuItem}
-                onDeleteMenuItem={handleDeleteMenuItem}
-                onAddCategory={handleAddCategory}
-                onDeleteCategory={handleDeleteCategory}
-                onRenameCategory={handleRenameCategory}
-              />
-            )}
+              {activeTab === 'financials' && (
+                <FinancialDashboard
+                  orders={orders}
+                  expenses={expenses}
+                  menuItems={menuItems}
+                  profile={profile}
+                />
+              )}
 
-            {activeTab === 'tableqr' && (
-              <TableQRView
-                profile={profile}
-                orders={orders}
-                currentUser={currentUser}
-                onOpenCustomerView={(tableNum) => {
-                  setCustomerTableMode(tableNum);
-                }}
-                onServiceRequest={handleTriggerServiceRequest}
-              />
-            )}
-          </>
-        )}
-      </main>
+              {activeTab === 'menu' && (
+                <MenuManager
+                  menuItems={menuItems}
+                  categories={categories}
+                  profile={profile}
+                  currentUser={currentUser}
+                  onSaveMenuItem={handleSaveMenuItem}
+                  onDeleteMenuItem={handleDeleteMenuItem}
+                  onAddCategory={handleAddCategory}
+                  onDeleteCategory={handleDeleteCategory}
+                  onRenameCategory={handleRenameCategory}
+                />
+              )}
+
+              {activeTab === 'tableqr' && (
+                <TableQRView
+                  profile={profile}
+                  orders={orders}
+                  currentUser={currentUser}
+                  onOpenCustomerView={(tableNum) => {
+                    setCustomerTableMode(tableNum);
+                  }}
+                  onServiceRequest={handleTriggerServiceRequest}
+                />
+              )}
+            </>
+          )}
+        </main>
+      </div>
 
       {/* Table QR Standee & Code Manager Modal */}
       <TableQRManagerModal

@@ -244,6 +244,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               notifications={notifications}
               orders={orders}
               profile={profile}
+              currentUser={currentUser}
               onViewOrder={onViewOrder}
               onMarkAsRead={onMarkAsRead}
               onMarkAllAsRead={onMarkAllAsRead}

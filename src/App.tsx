@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { AnimatePresence } from 'motion/react';
 import { 
   RestaurantProfile, 
   MenuItem, 
@@ -1141,18 +1142,21 @@ export default function App() {
       />
 
       {/* Invoice / Thermal Bill Viewer Modal */}
-      {viewingInvoice && (
-        <InvoiceViewer
-          order={viewingInvoice}
-          profile={profile}
-          onClose={() => setViewingInvoice(null)}
-          onUpdateOrder={(updated) => {
-            handleSaveOrder(updated);
-            setViewingInvoice(updated);
-          }}
-          onUpdatePaymentStatus={handleUpdatePaymentStatus}
-        />
-      )}
+      <AnimatePresence>
+        {viewingInvoice && (
+          <InvoiceViewer
+            key={viewingInvoice.id || viewingInvoice.invoiceNumber || 'invoice-modal'}
+            order={viewingInvoice}
+            profile={profile}
+            onClose={() => setViewingInvoice(null)}
+            onUpdateOrder={(updated) => {
+              handleSaveOrder(updated);
+              setViewingInvoice(updated);
+            }}
+            onUpdatePaymentStatus={handleUpdatePaymentStatus}
+          />
+        )}
+      </AnimatePresence>
 
       {/* AI Smart Receipt Scanner Modal */}
       <AIReceiptScannerModal

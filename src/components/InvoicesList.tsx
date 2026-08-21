@@ -727,7 +727,8 @@ export const InvoicesList: React.FC<InvoicesListProps> = ({
           }
         }}
         actionTitle="Admin Authorization: Delete Invoice"
-        actionDescription="Cashier/Staff accounts cannot delete customer invoices. Please enter Admin PIN (8888) to authorize this deletion."
+        actionDescription="Cashier/Staff accounts cannot delete customer invoices. Please enter Admin Master PIN to authorize this deletion."
+        adminPin={profile.adminPin}
       />
     </div>
   );

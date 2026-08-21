@@ -350,7 +350,7 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
                 setAdminAuthPrompt({
                   isOpen: true,
                   title: 'Admin Authorization: Manage Categories',
-                  description: 'Only Admin/Owner can add, rename, or delete menu categories. Enter Admin PIN (8888).',
+                  description: 'Only Admin/Owner can add, rename, or delete menu categories. Enter Admin Master PIN to authorize.',
                   onSuccess: () => setIsCategoryManagerOpen(true),
                 });
               }
@@ -372,7 +372,7 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
                 setAdminAuthPrompt({
                   isOpen: true,
                   title: 'Admin Authorization: Add Menu Item',
-                  description: 'Only Admin/Owner can add new menu items and set prices. Enter Admin PIN (8888).',
+                  description: 'Only Admin/Owner can add new menu items and set prices. Enter Admin Master PIN to authorize.',
                   onSuccess: () => handleOpenCreateModal(),
                 });
               }
@@ -593,7 +593,7 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
                           setAdminAuthPrompt({
                             isOpen: true,
                             title: `Admin Authorization: Edit "${item.name}"`,
-                            description: 'Only Admin/Owner can modify menu items, prices, or COGS. Enter Admin PIN (8888).',
+                            description: 'Only Admin/Owner can modify menu items, prices, or COGS. Enter Admin Master PIN to authorize.',
                             onSuccess: () => handleOpenEditModal(item),
                           });
                         }
@@ -612,7 +612,7 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
                           setAdminAuthPrompt({
                             isOpen: true,
                             title: `Admin Authorization: Delete "${item.name}"`,
-                            description: 'Only Admin/Owner can delete menu items. Enter Admin PIN (8888).',
+                            description: 'Only Admin/Owner can delete menu items. Enter Admin Master PIN to authorize.',
                             onSuccess: () => setItemToDelete(item),
                           });
                         }
@@ -1228,6 +1228,7 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
         }}
         actionTitle={adminAuthPrompt.title}
         actionDescription={adminAuthPrompt.description}
+        adminPin={profile.adminPin}
       />
     </div>
   );

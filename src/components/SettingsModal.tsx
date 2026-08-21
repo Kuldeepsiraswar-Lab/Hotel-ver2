@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import { 
   Building2, 
   DollarSign, 
@@ -21,7 +22,9 @@ import {
   Sun,
   Moon,
   Monitor,
-  Palette
+  Palette,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 import { RestaurantProfile, StaffUser } from '../types';
 import { defaultRestaurantProfile, defaultMenuItems, defaultBillOrders, defaultExpenses } from '../data/defaultData';
@@ -72,6 +75,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     adminPhone: profile.adminPhone || profile.phone || '+91 98765 43210',
     adminPin: profile.adminPin || '8888',
   });
+  const [showAdminPin, setShowAdminPin] = useState(false);
   const [isConfirmingReset, setIsConfirmingReset] = useState(false);
   const [isConfirmingCloudWipe, setIsConfirmingCloudWipe] = useState(false);
   const [importStatus, setImportStatus] = useState<string | null>(null);
@@ -87,7 +91,23 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     onSuccess: () => {},
   });
 
-  if (!isOpen) return null;
+  // Re-sync local form state whenever modal opens or profile changes
+  useEffect(() => {
+    if (isOpen) {
+      setForm({
+        ...profile,
+        adminName: profile.adminName || 'Kuldeep Nawar',
+        adminDesignation: profile.adminDesignation || 'Owner & General Manager',
+        adminEmail: profile.adminEmail || profile.email || 'admin@bellavistakitchen.in',
+        adminPhone: profile.adminPhone || profile.phone || '+91 98765 43210',
+        adminPin: profile.adminPin || '8888',
+      });
+      setShowAdminPin(false);
+      setIsConfirmingReset(false);
+      setIsConfirmingCloudWipe(false);
+      setImportStatus(null);
+    }
+  }, [isOpen, profile]);
 
   const handleChange = (field: keyof RestaurantProfile, val: any) => {
     setForm(prev => ({ ...prev, [field]: val }));
@@ -112,7 +132,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       setAdminAuthPrompt({
         isOpen: true,
         title: 'Admin Authorization: Save Settings',
-        description: 'Only Admin and Owner accounts can modify restaurant tax, profile, and payment settings. Enter Admin PIN (8888).',
+        description: 'Only Admin and Owner accounts can modify restaurant tax, profile, and payment settings. Enter Admin Master PIN to authorize.',
         onSuccess: () => {
           onSaveProfile(form);
           onClose();
@@ -149,28 +169,52 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       setAdminAuthPrompt({
         isOpen: true,
         title: 'Admin Authorization: Restore Database Backup',
-        description: 'Restoring a database replaces current restaurant data. Enter Admin PIN (8888).',
+        description: 'Restoring a database replaces current restaurant data. Enter Admin Master PIN to authorize.',
         onSuccess: performImport,
       });
     }
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/75 backdrop-blur-xs overflow-y-auto">
-      <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 w-full max-w-2xl max-h-[92vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150 text-slate-800 dark:text-slate-100">
-        
-        <div className="px-6 py-4 bg-slate-900 dark:bg-slate-950 text-white flex items-center justify-between border-b border-slate-800">
-          <div className="flex items-center gap-2">
-            <Building2 className="w-5 h-5 text-amber-400" />
-            <div>
-              <h3 className="font-bold text-base">Restaurant & Cloud Database Settings</h3>
-              <p className="text-xs text-slate-400">Manage business branding, appearance themes, tax rates & storage</p>
+    <AnimatePresence>
+      {isOpen && (
+        <motion.div 
+          key="settings-modal-backdrop"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.22, ease: "easeOut" }}
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/75 backdrop-blur-xs overflow-y-auto"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) onClose();
+          }}
+        >
+          <motion.div 
+            key="settings-modal-dialog"
+            initial={{ opacity: 0, scale: 0.94, y: 16 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.94, y: 12 }}
+            transition={{ duration: 0.24, ease: [0.16, 1, 0.3, 1] }}
+            className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 w-full max-w-2xl max-h-[92vh] flex flex-col overflow-hidden text-slate-800 dark:text-slate-100"
+            onClick={(e) => e.stopPropagation()}
+          >
+            
+            <div className="px-6 py-4 bg-slate-900 dark:bg-slate-950 text-white flex items-center justify-between border-b border-slate-800">
+              <div className="flex items-center gap-2">
+                <Building2 className="w-5 h-5 text-amber-400" />
+                <div>
+                  <h3 className="font-bold text-base">Restaurant & Cloud Database Settings</h3>
+                  <p className="text-xs text-slate-400">Manage business branding, appearance themes, tax rates & storage</p>
+                </div>
+              </div>
+              <button 
+                type="button"
+                onClick={onClose} 
+                className="text-slate-400 hover:text-white p-1 cursor-pointer rounded-lg hover:bg-slate-800/80 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
             </div>
-          </div>
-          <button onClick={onClose} className="text-slate-400 hover:text-white p-1 cursor-pointer">
-            <X className="w-5 h-5" />
-          </button>
-        </div>
 
         <form onSubmit={handleSubmit} className="p-6 space-y-5 overflow-y-auto flex-1 text-xs">
           
@@ -395,18 +439,45 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               </div>
 
               <div className="col-span-2">
-                <label className="block font-bold text-amber-800 dark:text-amber-400 mb-1 flex items-center justify-between">
-                  <span>Admin Master Authorization PIN (4-Digits)</span>
-                  <span className="text-[10px] text-slate-500 dark:text-slate-400 font-normal">Default: 8888</span>
-                </label>
-                <input
-                  type="text"
-                  maxLength={6}
-                  value={form.adminPin || '8888'}
-                  onChange={(e) => handleChange('adminPin', e.target.value.replace(/\D/g, ''))}
-                  placeholder="8888"
-                  className="w-full px-3 py-2 bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-700 rounded-lg font-mono font-bold tracking-widest text-amber-900 dark:text-amber-300"
-                />
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block font-bold text-amber-800 dark:text-amber-400">
+                    Admin Master Authorization PIN (4-Digits)
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setShowAdminPin(prev => !prev)}
+                    className="text-xs text-slate-500 dark:text-slate-400 hover:text-amber-600 dark:hover:text-amber-400 flex items-center gap-1 transition-colors cursor-pointer"
+                  >
+                    {showAdminPin ? (
+                      <>
+                        <EyeOff className="w-3.5 h-3.5" />
+                        <span>Hide PIN</span>
+                      </>
+                    ) : (
+                      <>
+                        <Eye className="w-3.5 h-3.5" />
+                        <span>Show PIN</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+                <div className="relative">
+                  <input
+                    type={showAdminPin ? "text" : "password"}
+                    maxLength={6}
+                    value={form.adminPin || '8888'}
+                    onChange={(e) => handleChange('adminPin', e.target.value.replace(/\D/g, ''))}
+                    placeholder="••••"
+                    className="w-full px-3 pr-10 py-2 bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-700 rounded-lg font-mono font-bold tracking-widest text-amber-900 dark:text-amber-300"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowAdminPin(prev => !prev)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-white"
+                  >
+                    {showAdminPin ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -627,7 +698,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                           setAdminAuthPrompt({
                             isOpen: true,
                             title: 'Admin Authorization: Clear Cloud Data',
-                            description: 'Wiping cloud collections removes all live online menu, orders, and expenses. Enter Admin PIN (8888).',
+                            description: 'Wiping cloud collections removes all live online menu, orders, and expenses. Enter Admin Master PIN to authorize.',
                             onSuccess: () => setIsConfirmingCloudWipe(true),
                           });
                         }
@@ -706,7 +777,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       setAdminAuthPrompt({
                         isOpen: true,
                         title: 'Admin Authorization: Reset Database',
-                        description: 'Resetting the database to defaults will wipe current orders and data. Enter Admin PIN (8888).',
+                        description: 'Resetting the database to defaults will wipe current orders and data. Enter Admin Master PIN to authorize.',
                         onSuccess: () => setIsConfirmingReset(true),
                       });
                     }
@@ -758,20 +829,23 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             </button>
           </div>
         </form>
-      </div>
+          </motion.div>
 
-      {/* Admin PIN Override Modal */}
-      <AdminAuthModal
-        isOpen={adminAuthPrompt.isOpen}
-        onClose={() => setAdminAuthPrompt(prev => ({ ...prev, isOpen: false }))}
-        onAuthorized={() => {
-          const fn = adminAuthPrompt.onSuccess;
-          setAdminAuthPrompt(prev => ({ ...prev, isOpen: false }));
-          if (fn) fn();
-        }}
-        actionTitle={adminAuthPrompt.title}
-        actionDescription={adminAuthPrompt.description}
-      />
-    </div>
+          {/* Admin PIN Override Modal */}
+          <AdminAuthModal
+            isOpen={adminAuthPrompt.isOpen}
+            onClose={() => setAdminAuthPrompt(prev => ({ ...prev, isOpen: false }))}
+            onAuthorized={() => {
+              const fn = adminAuthPrompt.onSuccess;
+              setAdminAuthPrompt(prev => ({ ...prev, isOpen: false }));
+              if (fn) fn();
+            }}
+            actionTitle={adminAuthPrompt.title}
+            actionDescription={adminAuthPrompt.description}
+            adminPin={form.adminPin || profile.adminPin}
+          />
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 };

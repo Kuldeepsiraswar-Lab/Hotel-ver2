@@ -4,12 +4,7 @@ import {
   UserPlus, 
   ShieldCheck, 
   Users, 
-  UserCheck, 
   Crown, 
-  Briefcase, 
-  CreditCard, 
-  Utensils, 
-  Flame, 
   Phone, 
   Mail, 
   KeyRound, 
@@ -19,12 +14,13 @@ import {
   AlertCircle, 
   Lock, 
   User, 
-  Building2, 
-  Plus, 
   Search, 
-  ShieldAlert,
   Save,
-  Check
+  Eye,
+  EyeOff,
+  Copy,
+  Check,
+  ShieldAlert
 } from 'lucide-react';
 import { RestaurantProfile, StaffUser, StaffRole } from '../types';
 import { isAdminOrOwner } from '../utils/permissions';
@@ -54,7 +50,7 @@ const ROLE_CONFIG: Record<StaffRole, { label: string; icon: string; badgeColor: 
     icon: '📋',
     badgeColor: 'bg-indigo-500/20 text-indigo-300 border-indigo-500/40',
     desc: 'Shift supervision, customer table assignment, discount approvals & daily billing operations.',
-    permissions: 'Management • Edit & Delete Allowed'
+    permissions: 'Management • Operations'
   },
   cashier: {
     label: 'Counter Cashier',
@@ -94,6 +90,14 @@ export const StaffManagementModal: React.FC<StaffManagementModalProps> = ({
   const [selectedRoleFilter, setSelectedRoleFilter] = useState<string>('all');
   const [editingStaffId, setEditingStaffId] = useState<string | null>(null);
   
+  // Track revealed PINs per staff member in roster view (masked by default for security)
+  const [revealedPins, setRevealedPins] = useState<Record<string, boolean>>({});
+  const [copiedPinId, setCopiedPinId] = useState<string | null>(null);
+
+  // Form PIN toggle visibility
+  const [showFormPin, setShowFormPin] = useState<boolean>(false);
+  const [showAdminMasterPin, setShowAdminMasterPin] = useState<boolean>(false);
+
   // Registration / Edit Form State
   const [formData, setFormData] = useState<{
     id: string;
@@ -135,27 +139,66 @@ export const StaffManagementModal: React.FC<StaffManagementModalProps> = ({
 
   if (!isOpen) return null;
 
+  const isUserAdmin = isAdminOrOwner(currentUser);
+
   const showToast = (type: 'success' | 'error', message: string) => {
     setNotification({ type, message });
     setTimeout(() => setNotification(null), 3500);
   };
 
+  const togglePinReveal = (staffId: string) => {
+    const performToggle = () => {
+      setRevealedPins(prev => ({ ...prev, [staffId]: !prev[staffId] }));
+    };
+
+    if (isUserAdmin) {
+      performToggle();
+    } else {
+      setAdminAuthPrompt({
+        isOpen: true,
+        actionName: 'view staff security passcode',
+        onAuthSuccess: performToggle,
+      });
+    }
+  };
+
+  const handleCopyPin = (staffId: string, pin: string) => {
+    navigator.clipboard.writeText(pin);
+    setCopiedPinId(staffId);
+    setTimeout(() => setCopiedPinId(null), 2000);
+    showToast('success', 'Staff PIN copied to clipboard securely.');
+  };
+
   const handleStartRegister = () => {
-    const nextCodeNumber = staffList.length + 1;
-    const defaultCode = `EMP-00${nextCodeNumber}`;
-    setFormData({
-      id: `staff-${Date.now()}`,
-      displayName: '',
-      role: 'cashier',
-      email: '',
-      phone: '',
-      pin: '',
-      employeeCode: defaultCode,
-      notes: '',
-      status: 'active',
-    });
-    setEditingStaffId(null);
-    setActiveTab('register');
+    const executeStartRegister = () => {
+      const nextCodeNumber = staffList.length + 1;
+      const defaultCode = `EMP-00${nextCodeNumber}`;
+      setFormData({
+        id: `staff-${Date.now()}`,
+        displayName: '',
+        role: 'cashier',
+        email: '',
+        phone: '',
+        pin: '',
+        employeeCode: defaultCode,
+        notes: '',
+        status: 'active',
+      });
+      setEditingStaffId(null);
+      setShowFormPin(false);
+      setActiveTab('register');
+    };
+
+    // Strictly enforce Admin permission for staff creation
+    if (isUserAdmin) {
+      executeStartRegister();
+    } else {
+      setAdminAuthPrompt({
+        isOpen: true,
+        actionName: 'create a new staff member account',
+        onAuthSuccess: executeStartRegister,
+      });
+    }
   };
 
   const handleStartEdit = (staff: StaffUser) => {
@@ -172,10 +215,11 @@ export const StaffManagementModal: React.FC<StaffManagementModalProps> = ({
         status: staff.status || 'active',
       });
       setEditingStaffId(staff.id);
+      setShowFormPin(false);
       setActiveTab('register');
     };
 
-    if (isAdminOrOwner(currentUser)) {
+    if (isUserAdmin) {
       executeEdit();
     } else {
       setAdminAuthPrompt({
@@ -197,7 +241,7 @@ export const StaffManagementModal: React.FC<StaffManagementModalProps> = ({
       showToast('success', `Removed ${staff.displayName} from staff roster.`);
     };
 
-    if (isAdminOrOwner(currentUser)) {
+    if (isUserAdmin) {
       if (window.confirm(`Are you sure you want to remove staff member "${staff.displayName}"?`)) {
         executeDelete();
       }
@@ -218,14 +262,14 @@ export const StaffManagementModal: React.FC<StaffManagementModalProps> = ({
       return;
     }
     if (!formData.pin.trim() || formData.pin.length < 4) {
-      showToast('error', 'PIN must be at least 4 digits (e.g. 1234).');
+      showToast('error', 'PIN must be at least 4 digits.');
       return;
     }
 
     // Check duplicate PIN with other staff
     const pinDuplicate = staffList.find(s => s.pin === formData.pin && s.id !== formData.id);
     if (pinDuplicate) {
-      showToast('error', `PIN ${formData.pin} is already used by ${pinDuplicate.displayName}. Please choose a unique PIN.`);
+      showToast('error', `PIN is already used by ${pinDuplicate.displayName}. Please choose a unique PIN.`);
       return;
     }
 
@@ -249,7 +293,7 @@ export const StaffManagementModal: React.FC<StaffManagementModalProps> = ({
       setEditingStaffId(null);
     };
 
-    if (isAdminOrOwner(currentUser) || staffList.length === 0) {
+    if (isUserAdmin || staffList.length === 0) {
       executeSave();
     } else {
       setAdminAuthPrompt({
@@ -296,10 +340,10 @@ export const StaffManagementModal: React.FC<StaffManagementModalProps> = ({
         });
       }
 
-      showToast('success', 'Admin & Owner details updated and synced successfully!');
+      showToast('success', 'Admin details & Master PIN updated securely!');
     };
 
-    if (isAdminOrOwner(currentUser)) {
+    if (isUserAdmin) {
       executeSave();
     } else {
       setAdminAuthPrompt({
@@ -336,9 +380,15 @@ export const StaffManagementModal: React.FC<StaffManagementModalProps> = ({
                 <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
                   {staffList.length} Registered
                 </span>
+                {!isUserAdmin && (
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30 flex items-center gap-1">
+                    <Lock className="w-2.5 h-2.5" />
+                    Admin Protected
+                  </span>
+                )}
               </div>
               <p className="text-xs text-slate-400">
-                Register new employees, assign PIN passcodes, manage roles and configure Master Admin details.
+                Admin-controlled employee accounts, role assignments, security passcodes, and master credentials.
               </p>
             </div>
           </div>
@@ -381,7 +431,17 @@ export const StaffManagementModal: React.FC<StaffManagementModalProps> = ({
 
           <button
             type="button"
-            onClick={() => setActiveTab('admin_details')}
+            onClick={() => {
+              if (isUserAdmin) {
+                setActiveTab('admin_details');
+              } else {
+                setAdminAuthPrompt({
+                  isOpen: true,
+                  actionName: 'view and edit Master Admin Profile',
+                  onAuthSuccess: () => setActiveTab('admin_details'),
+                });
+              }
+            }}
             className={`pb-3 px-4 text-xs font-bold transition-all border-b-2 flex items-center gap-2 cursor-pointer ${
               activeTab === 'admin_details'
                 ? 'border-amber-400 text-amber-400'
@@ -467,11 +527,13 @@ export const StaffManagementModal: React.FC<StaffManagementModalProps> = ({
                 {filteredStaff.map((staff) => {
                   const roleMeta = ROLE_CONFIG[staff.role] || ROLE_CONFIG.cashier;
                   const isCurrent = currentUser?.id === staff.id;
+                  const isPinRevealed = Boolean(revealedPins[staff.id]);
+                  const isCopied = copiedPinId === staff.id;
 
                   return (
                     <div
                       key={staff.id}
-                      className="p-4 bg-slate-850/80 hover:bg-slate-800 border border-slate-700/70 hover:border-slate-600 rounded-2xl transition-all flex flex-col justify-between group shadow-sm"
+                      className="p-4 bg-slate-850/80 hover:bg-slate-800 border border-slate-700/70 hover:border-slate-600 rounded-2xl transition-all flex flex-col justify-between group shadow-xs"
                     >
                       <div>
                         <div className="flex items-start justify-between gap-2 mb-2.5">
@@ -516,11 +578,40 @@ export const StaffManagementModal: React.FC<StaffManagementModalProps> = ({
                               <span className="truncate">{staff.email}</span>
                             </div>
                           )}
+
+                          {/* Protected PIN Display */}
                           <div className="flex items-center justify-between pt-1">
-                            <div className="flex items-center gap-1 text-[11px] text-amber-400 font-mono font-semibold">
-                              <KeyRound className="w-3 h-3" />
-                              <span>PIN: {staff.pin}</span>
+                            <div className="flex items-center gap-2 text-[11px]">
+                              <div className="flex items-center gap-1 text-slate-300 font-mono">
+                                <KeyRound className="w-3 h-3 text-amber-400" />
+                                <span className="font-semibold text-slate-400">PIN:</span>
+                                <span className={isPinRevealed ? 'text-amber-300 font-bold' : 'text-slate-400 tracking-widest'}>
+                                  {isPinRevealed ? staff.pin : '••••'}
+                                </span>
+                              </div>
+
+                              {/* Secure PIN Reveal Toggle */}
+                              <button
+                                type="button"
+                                onClick={() => togglePinReveal(staff.id)}
+                                className="p-1 text-slate-400 hover:text-amber-300 hover:bg-slate-700/60 rounded transition-colors cursor-pointer"
+                                title={isPinRevealed ? "Hide PIN" : "Reveal PIN (Requires Admin)"}
+                              >
+                                {isPinRevealed ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
+                              </button>
+
+                              {isPinRevealed && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleCopyPin(staff.id, staff.pin || '')}
+                                  className="p-1 text-slate-400 hover:text-emerald-400 hover:bg-slate-700/60 rounded transition-colors cursor-pointer"
+                                  title="Copy PIN"
+                                >
+                                  {isCopied ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                                </button>
+                              )}
                             </div>
+
                             <span className="text-[10px] text-slate-500">
                               {roleMeta.permissions}
                             </span>
@@ -569,10 +660,15 @@ export const StaffManagementModal: React.FC<StaffManagementModalProps> = ({
             <form onSubmit={handleSubmitStaffForm} className="max-w-2xl mx-auto space-y-5">
               
               <div className="bg-slate-850 p-5 rounded-2xl border border-slate-700/80 space-y-4">
-                <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                  <UserPlus className="w-4 h-4 text-amber-400" />
-                  <span>{editingStaffId ? 'Edit Employee Details' : 'New Staff Registration Form'}</span>
-                </h3>
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                    <UserPlus className="w-4 h-4 text-amber-400" />
+                    <span>{editingStaffId ? 'Edit Employee Details' : 'Admin Staff Registration'}</span>
+                  </h3>
+                  <span className="text-[11px] text-amber-400 font-medium">
+                    Admin Authorization Protected
+                  </span>
+                </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   {/* Full Name */}
@@ -624,23 +720,49 @@ export const StaffManagementModal: React.FC<StaffManagementModalProps> = ({
                     </div>
                   </div>
 
-                  {/* 4-Digit Passcode / PIN */}
+                  {/* 4-Digit Passcode / PIN with Show Toggle */}
                   <div className="space-y-1">
-                    <label className="text-xs font-bold text-slate-300 flex items-center justify-between">
-                      <span>4-Digit POS Login PIN <span className="text-amber-400">*</span></span>
-                      <span className="text-[10px] text-amber-400 font-mono">e.g. 4321</span>
-                    </label>
+                    <div className="flex items-center justify-between">
+                      <label className="text-xs font-bold text-slate-300">
+                        4-Digit POS Login PIN <span className="text-amber-400">*</span>
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => setShowFormPin(prev => !prev)}
+                        className="text-[11px] text-slate-400 hover:text-amber-400 flex items-center gap-1 transition-colors cursor-pointer"
+                      >
+                        {showFormPin ? (
+                          <>
+                            <EyeOff className="w-3 h-3" />
+                            <span>Hide</span>
+                          </>
+                        ) : (
+                          <>
+                            <Eye className="w-3 h-3" />
+                            <span>Show</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+
                     <div className="relative">
                       <KeyRound className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
                       <input
-                        type="text"
+                        type={showFormPin ? "text" : "password"}
                         required
                         maxLength={6}
                         value={formData.pin}
                         onChange={(e) => setFormData({ ...formData, pin: e.target.value.replace(/\D/g, '') })}
                         placeholder="••••"
-                        className="w-full pl-9 pr-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-xs text-white font-mono tracking-wider placeholder-slate-500 focus:outline-hidden focus:border-amber-400"
+                        className="w-full pl-9 pr-10 py-2 bg-slate-800 border border-slate-700 rounded-xl text-xs text-white font-mono tracking-wider placeholder-slate-500 focus:outline-hidden focus:border-amber-400"
                       />
+                      <button
+                        type="button"
+                        onClick={() => setShowFormPin(prev => !prev)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
+                      >
+                        {showFormPin ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                      </button>
                     </div>
                   </div>
 
@@ -806,26 +928,52 @@ export const StaffManagementModal: React.FC<StaffManagementModalProps> = ({
                     />
                   </div>
 
-                  {/* Admin Master PIN */}
+                  {/* Admin Master PIN with Show/Hide Toggle */}
                   <div className="space-y-1 sm:col-span-2">
-                    <label className="text-xs font-bold text-amber-400 flex items-center justify-between">
-                      <span className="flex items-center gap-1.5">
+                    <div className="flex items-center justify-between">
+                      <label className="text-xs font-bold text-amber-400 flex items-center gap-1.5">
                         <Lock className="w-3.5 h-3.5" />
                         Admin Master Authorization PIN (Overrides All Permissions)
-                      </span>
-                      <span className="text-[10px] text-slate-400">Default: 8888</span>
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      maxLength={6}
-                      value={adminDetails.adminPin}
-                      onChange={(e) => setAdminDetails({ ...adminDetails, adminPin: e.target.value.replace(/\D/g, '') })}
-                      placeholder="8888"
-                      className="w-full px-3 py-2 bg-slate-800 border border-amber-400/50 rounded-xl text-xs text-amber-300 font-mono tracking-widest focus:outline-hidden focus:border-amber-400 focus:ring-1 focus:ring-amber-400"
-                    />
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => setShowAdminMasterPin(prev => !prev)}
+                        className="text-[11px] text-slate-400 hover:text-amber-400 flex items-center gap-1 transition-colors cursor-pointer"
+                      >
+                        {showAdminMasterPin ? (
+                          <>
+                            <EyeOff className="w-3 h-3" />
+                            <span>Hide PIN</span>
+                          </>
+                        ) : (
+                          <>
+                            <Eye className="w-3 h-3" />
+                            <span>Show PIN</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+
+                    <div className="relative">
+                      <input
+                        type={showAdminMasterPin ? "text" : "password"}
+                        required
+                        maxLength={6}
+                        value={adminDetails.adminPin}
+                        onChange={(e) => setAdminDetails({ ...adminDetails, adminPin: e.target.value.replace(/\D/g, '') })}
+                        placeholder="••••"
+                        className="w-full px-3 pr-10 py-2.5 bg-slate-800 border border-amber-400/50 rounded-xl text-xs text-amber-300 font-mono tracking-widest focus:outline-hidden focus:border-amber-400 focus:ring-1 focus:ring-amber-400"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowAdminMasterPin(prev => !prev)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
+                      >
+                        {showAdminMasterPin ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                      </button>
+                    </div>
                     <p className="text-[11px] text-slate-400 mt-1">
-                      This master PIN is requested when deleting bills, modifying menu items, and editing system settings.
+                      This master PIN is requested when creating staff, deleting bills, modifying menu items, and editing system settings.
                     </p>
                   </div>
                 </div>
@@ -837,7 +985,7 @@ export const StaffManagementModal: React.FC<StaffManagementModalProps> = ({
                     className="px-5 py-2.5 bg-amber-400 hover:bg-amber-300 active:scale-95 text-slate-950 font-black text-xs rounded-xl transition-all cursor-pointer shadow-xs flex items-center gap-1.5"
                   >
                     <Save className="w-3.5 h-3.5" />
-                    <span>Save Admin Details & PIN</span>
+                    <span>Save Admin Details & Master PIN</span>
                   </button>
                 </div>
 
@@ -854,12 +1002,13 @@ export const StaffManagementModal: React.FC<StaffManagementModalProps> = ({
       <AdminAuthModal
         isOpen={adminAuthPrompt.isOpen}
         onClose={() => setAdminAuthPrompt({ isOpen: false, actionName: '', onAuthSuccess: () => {} })}
-        onSuccess={() => {
+        onAuthorized={() => {
           const fn = adminAuthPrompt.onAuthSuccess;
           setAdminAuthPrompt({ isOpen: false, actionName: '', onAuthSuccess: () => {} });
           fn();
         }}
         actionName={adminAuthPrompt.actionName}
+        adminPin={profile.adminPin}
       />
 
     </div>

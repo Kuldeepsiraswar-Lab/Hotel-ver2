@@ -436,7 +436,7 @@ export const ExpenseTracker: React.FC<ExpenseTrackerProps> = ({
                           setAdminAuthPrompt({
                             isOpen: true,
                             title: 'Admin Authorization: Delete Expense',
-                            description: 'Staff and cashiers cannot delete expense records. Please enter Admin PIN (8888) to authorize.',
+                            description: 'Staff and cashiers cannot delete expense records. Please enter Admin Master PIN to authorize.',
                             onSuccess: () => setExpenseToDelete(exp),
                           });
                         }
@@ -678,6 +678,7 @@ export const ExpenseTracker: React.FC<ExpenseTrackerProps> = ({
         }}
         actionTitle={adminAuthPrompt.title}
         actionDescription={adminAuthPrompt.description}
+        adminPin={profile.adminPin}
       />
     </div>
   );

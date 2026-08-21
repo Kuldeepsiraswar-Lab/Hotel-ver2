@@ -15,14 +15,13 @@ import {
   Clock,
   CircleDot
 } from 'lucide-react';
-import { AppNotification, BillOrder, RestaurantProfile, StaffUser } from '../types';
+import { AppNotification, BillOrder, RestaurantProfile } from '../types';
 import { isSoundEnabled, setSoundEnabled, testChimeSound, playOrderChimeSound } from '../utils/sound';
 
 interface NotificationMenuProps {
   notifications: AppNotification[];
   orders: BillOrder[];
   profile: RestaurantProfile;
-  currentUser?: StaffUser | null;
   onViewOrder: (order: BillOrder) => void;
   onMarkAsRead: (notificationId: string) => void;
   onMarkAllAsRead: () => void;
@@ -34,7 +33,6 @@ export const NotificationMenu: React.FC<NotificationMenuProps> = ({
   notifications,
   orders,
   profile,
-  currentUser,
   onViewOrder,
   onMarkAsRead,
   onMarkAllAsRead,
@@ -47,9 +45,7 @@ export const NotificationMenu: React.FC<NotificationMenuProps> = ({
   const [justPlayedChime, setJustPlayedChime] = useState<boolean>(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
-  const isKitchen = currentUser?.role === 'kitchen';
-
-  // Deduplicate and filter notifications by user role
+  // Deduplicate notifications by ID and orderId
   const uniqueNotifications = useMemo(() => {
     const list: AppNotification[] = [];
     const seenIds = new Set<string>();
@@ -61,17 +57,11 @@ export const NotificationMenu: React.FC<NotificationMenuProps> = ({
         if (seenOrderIds.has(notif.orderId)) continue;
         seenOrderIds.add(notif.orderId);
       }
-
-      // If user is Admin / Waiter / Cashier / Manager, do not clutter with internal POS orders sent exclusively to Kitchen
-      if (!isKitchen && notif.source === 'pos' && notif.targetAudience === 'kitchen') {
-        continue;
-      }
-
       seenIds.add(notif.id);
       list.push(notif);
     }
     return list;
-  }, [notifications, isKitchen]);
+  }, [notifications]);
 
   const unreadCount = uniqueNotifications.filter(n => !n.read).length;
   const qrOrdersCount = uniqueNotifications.filter(n => n.type === 'qr_order').length;
@@ -316,23 +306,13 @@ export const NotificationMenu: React.FC<NotificationMenuProps> = ({
                         : 'bg-slate-800/50 border-slate-700/40 hover:bg-slate-800 hover:border-slate-600'
                     }`}
                   >
-                    {/* Top row: Table Badge + Type Tag + Timestamp + Read Dot */}
+                    {/* Top row: Table Badge + Timestamp + Read Dot */}
                     <div className="flex items-center justify-between gap-2">
                       <div className="flex items-center gap-1.5 flex-wrap">
                         {notification.tableNumber && (
                           <span className="px-2 py-0.5 rounded-lg bg-amber-400 text-slate-950 font-black text-[11px] flex items-center gap-1 shadow-xs">
                             <QrCode className="w-3 h-3" />
                             {notification.tableNumber}
-                          </span>
-                        )}
-                        {(notification.source === 'table_qr' || notification.type === 'qr_order') && (
-                          <span className="px-1.5 py-0.5 rounded-md bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-[10px] font-black uppercase tracking-wider">
-                            Table QR
-                          </span>
-                        )}
-                        {notification.source === 'pos' && (
-                          <span className="px-1.5 py-0.5 rounded-md bg-sky-500/20 text-sky-300 border border-sky-500/40 text-[10px] font-black uppercase tracking-wider">
-                            Kitchen KDS
                           </span>
                         )}
                         <span className="font-extrabold text-xs text-white">

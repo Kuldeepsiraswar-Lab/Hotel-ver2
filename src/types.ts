@@ -137,9 +137,6 @@ export interface Expense {
 export interface AppNotification {
   id: string;
   type: 'qr_order' | 'call_server' | 'order_update' | 'payment';
-  source?: 'pos' | 'table_qr' | 'system';
-  targetAudience?: 'kitchen' | 'staff_and_kitchen' | 'all';
-  targetRoles?: StaffRole[];
   title: string;
   message: string;
   tableNumber?: string;

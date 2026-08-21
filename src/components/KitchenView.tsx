@@ -1186,12 +1186,12 @@ export const KitchenView: React.FC<KitchenViewProps> = ({
 
                     <div className="flex items-center gap-1 text-[11px]">
                       {isQR ? (
-                        <span className="flex items-center gap-1 bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 px-1.5 py-0.5 rounded-md font-bold text-[10px] uppercase tracking-wider">
-                          <Smartphone className="w-3 h-3" /> Table QR
+                        <span className="flex items-center gap-1 bg-amber-400/20 text-amber-300 px-1.5 py-0.5 rounded font-semibold">
+                          <Smartphone className="w-3 h-3" /> QR
                         </span>
                       ) : (
-                        <span className="flex items-center gap-1 bg-sky-500/20 text-sky-300 border border-sky-500/40 px-1.5 py-0.5 rounded-md font-bold text-[10px] uppercase tracking-wider truncate max-w-[120px]">
-                          POS: {order.serverName || 'Billing'}
+                        <span className="text-slate-300 font-medium truncate max-w-[100px]">
+                          {order.serverName || 'Staff'}
                         </span>
                       )}
                     </div>

@@ -7,8 +7,7 @@ import {
   Expense, 
   PaymentStatus,
   AppNotification,
-  StaffUser,
-  StaffRole
+  StaffUser
 } from './types';
 import { 
   defaultRestaurantProfile, 
@@ -161,16 +160,6 @@ export default function App() {
     return null;
   });
 
-  const currentUserRef = useRef<StaffUser | null>(currentUser);
-  useEffect(() => {
-    currentUserRef.current = currentUser;
-  }, [currentUser]);
-
-  const activeTabRef = useRef<NavTab>(activeTab);
-  useEffect(() => {
-    activeTabRef.current = activeTab;
-  }, [activeTab]);
-
   // Staff Roster Accounts
   const [staffList, setStaffList] = useState<StaffUser[]>(defaultStaffAccounts);
 
@@ -256,33 +245,12 @@ export default function App() {
     }
     notifiedOrderIdsRef.current.add(order.id);
 
-    const isQR = order.serverName === 'Table QR Self-Order' || Boolean(order.notes?.includes('[QR Self-Order]'));
-    const source: 'pos' | 'table_qr' = isQR ? 'table_qr' : 'pos';
-    const targetAudience: 'kitchen' | 'all' = isQR ? 'all' : 'kitchen';
-    const targetRoles: StaffRole[] = isQR 
-      ? ['owner', 'manager', 'cashier', 'waiter', 'kitchen'] 
-      : ['kitchen'];
-
-    // 🔔 Sound chime handling:
-    // If order from Table QR: alert Admin and Staff (and KitchenView handles kitchen chime)
-    // If order from POS billing: alert Kitchen Display station only
+    // 🔔 Play real-time kitchen bell & acoustic order chime once!
     if (playSound) {
-      if (isQR) {
-        try {
-          playOrderChimeSound();
-        } catch (e) {
-          console.warn('Could not play order chime:', e);
-        }
-      } else {
-        const curUser = currentUserRef.current;
-        const curTab = activeTabRef.current;
-        if (isKitchenStaff(curUser) || curTab === 'kitchen') {
-          try {
-            playOrderChimeSound();
-          } catch (e) {
-            console.warn('Could not play kitchen order chime:', e);
-          }
-        }
+      try {
+        playOrderChimeSound();
+      } catch (e) {
+        console.warn('Could not play order chime:', e);
       }
     }
 
@@ -290,19 +258,16 @@ export default function App() {
       ? order.items.map(i => `${i.quantity}x ${i.name}`).join(', ')
       : `${order.items?.length || 1} items`;
 
+    const isQR = order.serverName === 'Table QR Self-Order' || Boolean(order.tableNumber);
+
     // Deterministic notification ID bound to order ID to prevent Firestore doc duplication
     const notifId = `notif-order-${order.id}`;
 
     const newNotif: AppNotification = {
       id: notifId,
       type: isQR ? 'qr_order' : 'order_update',
-      source,
-      targetAudience,
-      targetRoles,
-      title: isQR ? `${order.tableNumber || 'Table'} • Table QR Order` : `Kitchen Ticket #${order.invoiceNumber}`,
-      message: isQR
-        ? `${order.items.length} dishes ordered by ${order.customerName || 'Guest'} (${order.tableNumber || 'Dine-In'})`
-        : `POS Billing Order sent to Kitchen Display (${order.items.length} items • ${order.orderType})`,
+      title: isQR ? `${order.tableNumber || 'Table'} • QR Self-Order` : `New Order #${order.invoiceNumber}`,
+      message: `${order.items.length} dishes ordered by ${order.customerName || 'Guest'} (${order.tableNumber || order.orderType})`,
       tableNumber: order.tableNumber,
       invoiceNumber: order.invoiceNumber,
       orderId: order.id,
@@ -323,19 +288,16 @@ export default function App() {
       ...prev.filter(n => n.id !== notifId && (!n.orderId || n.orderId !== order.id))
     ]);
 
-    // Popup alert toast in top right:
-    // When Table QR self-order: Send to Admin & Staff!
-    if (isQR) {
-      setNewOrderAlert({
-        table: order.tableNumber || 'Table',
-        invoice: order.invoiceNumber,
-        itemsCount: order.items.length,
-      });
+    // Popup alert toast in top right
+    setNewOrderAlert({
+      table: order.tableNumber || 'Table',
+      invoice: order.invoiceNumber,
+      itemsCount: order.items.length,
+    });
 
-      setTimeout(() => {
-        setNewOrderAlert(null);
-      }, 8000);
-    }
+    setTimeout(() => {
+      setNewOrderAlert(null);
+    }, 8000);
   };
 
   // Google Cloud Firestore Real-time Subscriptions (Cloud-Only Source of Truth)
@@ -404,31 +366,12 @@ export default function App() {
                   playStaffAlertChime();
                 } catch (e) {}
                 setActiveStaffAlert(notif);
-              } else if (notif.type === 'qr_order' || notif.source === 'table_qr') {
-                // Table QR order notification: for Admin, Staff, and Kitchen
+              } else if (notif.type === 'qr_order' || notif.type === 'order_update') {
                 if (notif.orderId && !notifiedOrderIdsRef.current.has(notif.orderId)) {
                   notifiedOrderIdsRef.current.add(notif.orderId);
                   try {
                     playOrderChimeSound();
                   } catch (e) {}
-                  setNewOrderAlert({
-                    table: notif.tableNumber || 'Table',
-                    invoice: notif.invoiceNumber || '',
-                    itemsCount: notif.itemsCount || 1,
-                  });
-                  setTimeout(() => setNewOrderAlert(null), 8000);
-                }
-              } else if (notif.source === 'pos' || notif.targetAudience === 'kitchen') {
-                // POS billing order notification: send alert to Kitchen Display station
-                const curUser = currentUserRef.current;
-                const curTab = activeTabRef.current;
-                if (isKitchenStaff(curUser) || curTab === 'kitchen') {
-                  if (notif.orderId && !notifiedOrderIdsRef.current.has(notif.orderId)) {
-                    notifiedOrderIdsRef.current.add(notif.orderId);
-                    try {
-                      playOrderChimeSound();
-                    } catch (e) {}
-                  }
                 }
               }
             });

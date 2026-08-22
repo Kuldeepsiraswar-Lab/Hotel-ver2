@@ -19,7 +19,8 @@ import {
   LogOut, 
   ChevronRight, 
   X, 
-  ShieldAlert
+  ShieldAlert,
+  BarChart3
 } from 'lucide-react';
 import { RestaurantProfile, StaffUser } from '../types';
 import { NavTab } from './Navbar';
@@ -122,6 +123,16 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const roleInfo = getRoleBadge(currentUser?.role);
 
   const mainNavItems = [
+    {
+      id: 'dashboard' as NavTab,
+      label: 'Sales Dashboard',
+      subLabel: 'Every day sale data & totals',
+      icon: BarChart3,
+      badge: 'Sales',
+      badgeFull: 'Daily KPIs',
+      badgeColor: 'bg-emerald-500 text-slate-950 font-black',
+      isAllowedForKitchen: false,
+    },
     {
       id: 'pos' as NavTab,
       label: 'POS Billing',

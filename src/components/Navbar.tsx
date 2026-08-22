@@ -13,13 +13,14 @@ import {
   TrendingUp,
   QrCode,
   Clock,
-  KeyRound
+  KeyRound,
+  BarChart3
 } from 'lucide-react';
 import { RestaurantProfile, AppNotification, BillOrder, StaffUser } from '../types';
 import { NotificationMenu } from './NotificationMenu';
 import { isKitchenStaff, isAdminOrOwner } from '../utils/permissions';
 
-export type NavTab = 'pos' | 'kitchen' | 'invoices' | 'expenses' | 'financials' | 'menu' | 'tableqr';
+export type NavTab = 'dashboard' | 'pos' | 'kitchen' | 'invoices' | 'expenses' | 'financials' | 'menu' | 'tableqr';
 
 interface NavbarProps {
   activeTab: NavTab;
@@ -97,6 +98,8 @@ export const Navbar: React.FC<NavbarProps> = ({
 
   const getTabDetails = (tab: NavTab) => {
     switch (tab) {
+      case 'dashboard':
+        return { label: 'Sales & Revenue Dashboard', icon: BarChart3, badge: 'Daily & Total Sales' };
       case 'pos':
         return { label: 'POS Billing Terminal', icon: Receipt, badge: openOrdersCount > 0 ? `${openOrdersCount} Open Orders` : 'Ready' };
       case 'kitchen':

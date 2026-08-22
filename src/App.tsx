@@ -23,6 +23,7 @@ import { POSBilling } from './components/POSBilling';
 import { InvoicesList } from './components/InvoicesList';
 import { ExpenseTracker } from './components/ExpenseTracker';
 import { FinancialDashboard } from './components/FinancialDashboard';
+import { SalesDashboard } from './components/SalesDashboard';
 import { MenuManager } from './components/MenuManager';
 import { KitchenView } from './components/KitchenView';
 import { InvoiceViewer } from './components/InvoiceViewer';
@@ -1100,6 +1101,18 @@ export default function App() {
             />
           ) : (
             <>
+              {activeTab === 'dashboard' && (
+                <SalesDashboard
+                  orders={orders}
+                  expenses={expenses}
+                  menuItems={menuItems}
+                  profile={profile}
+                  currentUser={currentUser}
+                  onViewInvoice={(order) => setViewingInvoice(order)}
+                  onOpenPOS={() => setActiveTab('pos')}
+                />
+              )}
+
               {activeTab === 'pos' && (
                 <POSBilling
                   menuItems={menuItems}

@@ -264,3 +264,22 @@ export interface StaffUser {
   permissions?: StaffPermissions; // Granular operational permissions
 }
 
+export type TableSection = 'Main Dining' | 'AC Hall' | 'Bar' | 'Patio / Outdoor' | 'Rooftop' | 'VIP Lounge' | 'Private Room' | string;
+export type TableStatus = 'available' | 'occupied' | 'reserved' | 'billing';
+
+export interface RestaurantTable {
+  id: string;
+  name: string; // e.g. "Table 1", "T-02", "Bar 1", "Patio 3"
+  section: TableSection; // e.g. "Main Dining", "Bar", "Patio / Outdoor", etc.
+  capacity: number; // e.g. 2, 4, 6, 8, 12 seats
+  status?: TableStatus;
+  isActive?: boolean;
+  notes?: string; // e.g. "Near window", "Corner booth", "High top bar"
+  shape?: 'round' | 'square' | 'rectangle';
+  sortOrder?: number;
+  qrCodeUrl?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+

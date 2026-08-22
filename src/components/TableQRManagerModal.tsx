@@ -13,44 +13,69 @@ import {
   Utensils, 
   Layers, 
   Smartphone,
-  Info
+  Info,
+  Edit3,
+  Trash2,
+  Users,
+  Settings2,
+  AlertTriangle
 } from 'lucide-react';
 import QRCode from 'qrcode';
-import { RestaurantProfile } from '../types';
+import { RestaurantProfile, RestaurantTable } from '../types';
+import { TableEditorModal } from './TableEditorModal';
+import { BatchAddTablesModal } from './BatchAddTablesModal';
+import { generateId } from '../utils/formatters';
 
 interface TableQRManagerModalProps {
   isOpen: boolean;
   onClose: () => void;
   profile: RestaurantProfile;
   onOpenCustomerView: (tableNumber: string) => void;
+  tables?: RestaurantTable[];
+  onSaveTable?: (table: RestaurantTable) => void;
+  onDeleteTable?: (tableId: string) => void;
+  onBatchAddTables?: (tables: RestaurantTable[]) => void;
 }
-
-const DEFAULT_TABLES = [
-  'Table 1', 'Table 2', 'Table 3', 'Table 4', 
-  'Table 5', 'Table 6', 'Table 7', 'Table 8',
-  'Bar 1', 'Bar 2', 'Patio 1', 'Patio 2'
-];
 
 export const TableQRManagerModal: React.FC<TableQRManagerModalProps> = ({
   isOpen,
   onClose,
   profile,
   onOpenCustomerView,
+  tables = [],
+  onSaveTable,
+  onDeleteTable,
+  onBatchAddTables,
 }) => {
-  const [tablesList, setTablesList] = useState<string[]>(DEFAULT_TABLES);
-  const [selectedTable, setSelectedTable] = useState<string>('Table 1');
+  // Local fallback if tables prop is empty
+  const [selectedTable, setSelectedTable] = useState<string>(() => {
+    return tables.length > 0 ? tables[0].name : 'Table 1';
+  });
   const [newTableName, setNewTableName] = useState<string>('');
   const [wifiSsid, setWifiSsid] = useState<string>(profile.name ? `${profile.name}_Guest_WiFi` : 'Restaurant_Guest_WiFi');
   const [wifiPassword, setWifiPassword] = useState<string>('DineIn123');
   const [showWifiOnStandee, setShowWifiOnStandee] = useState<boolean>(true);
   const [copied, setCopied] = useState<boolean>(false);
   const [qrDataUrl, setQrDataUrl] = useState<string>('');
-  
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+
+  // Submodals
+  const [isEditorOpen, setIsEditorOpen] = useState(false);
+  const [editingTable, setEditingTable] = useState<RestaurantTable | null>(null);
+  const [isBatchOpen, setIsBatchOpen] = useState(false);
+  const [tableToDelete, setTableToDelete] = useState<RestaurantTable | null>(null);
+
+  // Sync selectedTable with existing tables list
+  useEffect(() => {
+    if (tables.length > 0 && !tables.some(t => t.name === selectedTable)) {
+      setSelectedTable(tables[0].name);
+    }
+  }, [tables, selectedTable]);
+
+  const currentTableObj = tables.find(t => t.name === selectedTable);
 
   // Generate current ordering URL for the selected table
   const baseUrl = typeof window !== 'undefined' ? `${window.location.origin}${window.location.pathname}` : '';
-  const currentTableUrl = `${baseUrl}?table=${encodeURIComponent(selectedTable)}`;
+  const currentTableUrl = `${baseUrl}?table=${encodeURIComponent(selectedTable || 'Table 1')}`;
 
   // Generate QR Code image when selectedTable changes
   useEffect(() => {
@@ -75,12 +100,24 @@ export const TableQRManagerModal: React.FC<TableQRManagerModalProps> = ({
 
   if (!isOpen) return null;
 
-  const handleAddTable = (e: React.FormEvent) => {
+  const handleAddQuickTable = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newTableName.trim()) return;
     const formatted = newTableName.trim();
-    if (!tablesList.includes(formatted)) {
-      setTablesList(prev => [...prev, formatted]);
+    if (!formatted) return;
+
+    if (onSaveTable) {
+      const newTbl: RestaurantTable = {
+        id: generateId('tbl'),
+        name: formatted,
+        section: 'Main Dining',
+        capacity: 4,
+        shape: 'square',
+        isActive: true,
+        sortOrder: tables.length + 1,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+      onSaveTable(newTbl);
       setSelectedTable(formatted);
     }
     setNewTableName('');
@@ -105,6 +142,9 @@ export const TableQRManagerModal: React.FC<TableQRManagerModalProps> = ({
   const handlePrintSingleStandee = () => {
     const printWindow = window.open('', '_blank');
     if (!printWindow) return;
+
+    const sec = currentTableObj?.section || 'Main Dining';
+    const cap = currentTableObj?.capacity || 4;
 
     printWindow.document.write(`
       <!DOCTYPE html>
@@ -143,7 +183,7 @@ export const TableQRManagerModal: React.FC<TableQRManagerModalProps> = ({
             .tagline {
               font-size: 11px;
               color: #64748b;
-              margin-bottom: 16px;
+              margin-bottom: 14px;
             }
             .table-badge {
               display: inline-block;
@@ -153,8 +193,14 @@ export const TableQRManagerModal: React.FC<TableQRManagerModalProps> = ({
               font-size: 14px;
               padding: 6px 18px;
               border-radius: 12px;
-              margin-bottom: 16px;
+              margin-bottom: 4px;
               text-transform: uppercase;
+            }
+            .section-badge {
+              font-size: 11px;
+              color: #64748b;
+              font-weight: 600;
+              margin-bottom: 14px;
             }
             .qr-wrap {
               background: #f8fafc;
@@ -203,6 +249,7 @@ export const TableQRManagerModal: React.FC<TableQRManagerModalProps> = ({
             <div class="brand-name">${profile.name}</div>
             <div class="tagline">${profile.tagline || 'Contactless Table Ordering'}</div>
             <div class="table-badge">${selectedTable}</div>
+            <div class="section-badge">${sec} • ${cap} Seats</div>
             <div class="qr-wrap">
               <img src="${qrDataUrl}" class="qr-img" />
             </div>
@@ -238,8 +285,8 @@ export const TableQRManagerModal: React.FC<TableQRManagerModalProps> = ({
 
     // Generate QR images for all tables
     const tableCards = await Promise.all(
-      tablesList.map(async (tbl) => {
-        const url = `${baseUrl}?table=${encodeURIComponent(tbl)}`;
+      tables.map(async (tbl) => {
+        const url = `${baseUrl}?table=${encodeURIComponent(tbl.name)}`;
         const qr = await QRCode.toDataURL(url, {
           width: 220,
           margin: 1,
@@ -324,7 +371,7 @@ export const TableQRManagerModal: React.FC<TableQRManagerModalProps> = ({
             ${tableCards.map(({ tbl, qr }) => `
               <div class="standee">
                 <div class="brand-name">${profile.name}</div>
-                <div class="table-badge">${tbl}</div>
+                <div class="table-badge">${tbl.name}</div>
                 <img src="${qr}" class="qr-img" />
                 <div class="scan-instructions">📲 Scan to Order from Table</div>
                 <div class="sub-instructions">Instant digital menu & live bill tracking</div>
@@ -352,7 +399,7 @@ export const TableQRManagerModal: React.FC<TableQRManagerModalProps> = ({
         {/* Modal Header */}
         <div className="p-4 sm:p-5 bg-slate-900 text-white flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="p-2.5 bg-linear-to-tr from-amber-500 to-amber-400 text-slate-950 rounded-2xl shadow-md">
+            <div className="p-2.5 bg-gradient-to-tr from-amber-500 to-amber-400 text-slate-950 rounded-2xl shadow-md">
               <QrCode className="w-5 h-5" />
             </div>
             <div>
@@ -368,13 +415,23 @@ export const TableQRManagerModal: React.FC<TableQRManagerModalProps> = ({
             </div>
           </div>
 
-          <button
-            type="button"
-            onClick={onClose}
-            className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl transition-colors cursor-pointer"
-          >
-            <X className="w-5 h-5" />
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setIsBatchOpen(true)}
+              className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-bold transition-all flex items-center gap-1 border border-slate-700 cursor-pointer"
+            >
+              <Layers className="w-3.5 h-3.5 text-amber-400" />
+              <span>Bulk Add</span>
+            </button>
+            <button
+              type="button"
+              onClick={onClose}
+              className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl transition-colors cursor-pointer"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
         </div>
 
         {/* Modal Body */}
@@ -387,35 +444,56 @@ export const TableQRManagerModal: React.FC<TableQRManagerModalProps> = ({
             <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-3">
               <div className="flex items-center justify-between">
                 <span className="font-extrabold text-xs text-slate-900 dark:text-slate-100 uppercase tracking-wider">
-                  Select Dining Table / Area
+                  Select Dining Table ({tables.length})
                 </span>
-                <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">
-                  {tablesList.length} Tables Registered
-                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEditingTable(null);
+                    setIsEditorOpen(true);
+                  }}
+                  className="text-xs text-amber-600 dark:text-amber-400 font-bold hover:underline flex items-center gap-1 cursor-pointer"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>New Table</span>
+                </button>
               </div>
 
-              <div className="flex flex-wrap gap-1.5 max-h-40 overflow-y-auto p-1">
-                {tablesList.map((tbl) => (
-                  <button
-                    key={tbl}
-                    type="button"
-                    onClick={() => setSelectedTable(tbl)}
-                    className={`px-3 py-1.5 text-xs font-bold rounded-xl transition-all cursor-pointer ${
-                      selectedTable === tbl
-                        ? 'bg-slate-900 dark:bg-amber-400 text-amber-400 dark:text-slate-950 shadow-sm ring-2 ring-amber-400/50'
-                        : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700'
+              <div className="flex flex-wrap gap-1.5 max-h-48 overflow-y-auto p-1">
+                {tables.map((tbl) => (
+                  <div
+                    key={tbl.id}
+                    className={`group flex items-center gap-1 px-2.5 py-1.5 text-xs font-bold rounded-xl transition-all cursor-pointer border ${
+                      selectedTable === tbl.name
+                        ? 'bg-slate-900 dark:bg-amber-400 text-amber-400 dark:text-slate-950 shadow-sm border-slate-900 dark:border-amber-400 ring-2 ring-amber-400/50'
+                        : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 border-slate-200 dark:border-slate-700'
                     }`}
+                    onClick={() => setSelectedTable(tbl.name)}
                   >
-                    {tbl}
-                  </button>
+                    <span>{tbl.name}</span>
+                    <span className="text-[10px] opacity-70 font-mono">({tbl.capacity}p)</span>
+                    
+                    {/* Quick Edit table icon */}
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setEditingTable(tbl);
+                        setIsEditorOpen(true);
+                      }}
+                      className="p-0.5 hover:text-white dark:hover:text-black rounded opacity-60 hover:opacity-100 transition-opacity"
+                    >
+                      <Edit3 className="w-3 h-3" />
+                    </button>
+                  </div>
                 ))}
               </div>
 
               {/* Add Custom Table Form */}
-              <form onSubmit={handleAddTable} className="flex gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+              <form onSubmit={handleAddQuickTable} className="flex gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
                 <input
                   type="text"
-                  placeholder="Add custom (e.g. VIP Booth 1, Rooftop 4)..."
+                  placeholder="Quick add (e.g. Patio 3, VIP Booth 2)..."
                   value={newTableName}
                   onChange={(e) => setNewTableName(e.target.value)}
                   className="flex-1 px-3 py-1.5 text-xs bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 rounded-xl focus:bg-white dark:focus:bg-slate-900 focus:ring-1 focus:ring-slate-900 dark:focus:ring-amber-400 focus:outline-none"
@@ -520,7 +598,7 @@ export const TableQRManagerModal: React.FC<TableQRManagerModalProps> = ({
           <div className="lg:col-span-5 flex flex-col items-center justify-center space-y-4">
             
             {/* Standee Preview Card */}
-            <div className="w-full max-w-xs bg-white border-2 border-slate-900 dark:border-slate-700 rounded-3xl p-5 text-center shadow-xl space-y-3 relative">
+            <div className="w-full max-w-xs bg-white border-2 border-slate-900 rounded-3xl p-5 text-center shadow-xl space-y-3 relative text-slate-900">
               <div className="absolute top-3 right-3 text-[10px] font-black uppercase text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
                 Standee
               </div>
@@ -533,6 +611,9 @@ export const TableQRManagerModal: React.FC<TableQRManagerModalProps> = ({
               <div>
                 <span className="inline-block px-3 py-1 bg-slate-900 text-amber-400 font-extrabold text-xs rounded-xl shadow-xs">
                   {selectedTable}
+                </span>
+                <span className="text-[10px] text-slate-500 font-bold block mt-0.5">
+                  {currentTableObj?.section || 'Main Dining'} • {currentTableObj?.capacity || 4} Seats
                 </span>
               </div>
 
@@ -600,11 +681,34 @@ export const TableQRManagerModal: React.FC<TableQRManagerModalProps> = ({
                 className="w-full py-2.5 bg-linear-to-r from-amber-500 to-amber-400 text-slate-950 rounded-xl text-xs font-black flex items-center justify-center gap-1.5 shadow-sm cursor-pointer"
               >
                 <Layers className="w-4 h-4" />
-                <span>Batch Print All {tablesList.length} Table Standees</span>
+                <span>Batch Print All {tables.length} Table Standees</span>
               </button>
             </div>
           </div>
         </div>
+
+        {/* Submodals */}
+        {onSaveTable && (
+          <TableEditorModal
+            isOpen={isEditorOpen}
+            onClose={() => {
+              setIsEditorOpen(false);
+              setEditingTable(null);
+            }}
+            tableToEdit={editingTable}
+            onSave={onSaveTable}
+            existingTables={tables}
+          />
+        )}
+
+        {onBatchAddTables && (
+          <BatchAddTablesModal
+            isOpen={isBatchOpen}
+            onClose={() => setIsBatchOpen(false)}
+            existingTables={tables}
+            onBatchSave={onBatchAddTables}
+          />
+        )}
       </div>
     </div>
   );

@@ -20,12 +20,20 @@ import {
   ChevronRight,
   Clock,
   LayoutGrid,
-  List
+  List,
+  Settings2,
+  Edit3,
+  Users,
+  Layers,
+  ChevronDown
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
-import { MenuItem, OrderItem, BillOrder, RestaurantProfile, OrderType, PaymentMethod, PaymentStatus, StaffUser, MenuTag } from '../types';
+import { MenuItem, OrderItem, BillOrder, RestaurantProfile, OrderType, PaymentMethod, PaymentStatus, StaffUser, MenuTag, RestaurantTable } from '../types';
+import { defaultRestaurantTables } from '../data/defaultData';
 import { formatCurrency, generateId, generateNextReceiptNumber } from '../utils/formatters';
 import { getTagStyle } from '../utils/tagUtils';
+import { TableManagementModal } from './TableManagementModal';
+import { TableEditorModal } from './TableEditorModal';
 
 interface POSBillingProps {
   menuItems: MenuItem[];
@@ -34,16 +42,14 @@ interface POSBillingProps {
   categories?: string[];
   tags?: MenuTag[];
   currentUser?: StaffUser | null;
+  tables?: RestaurantTable[];
   onSaveOrder: (order: BillOrder) => void;
   onViewInvoice: (order: BillOrder) => void;
   onOpenTableQR?: () => void;
+  onSaveTable?: (table: RestaurantTable) => void;
+  onDeleteTable?: (tableId: string) => void;
+  onBatchAddTables?: (tables: RestaurantTable[]) => void;
 }
-
-const TABLES = [
-  'Table 1', 'Table 2', 'Table 3', 'Table 4', 
-  'Table 5', 'Table 6', 'Table 7', 'Table 8', 
-  'Bar 1', 'Bar 2', 'Patio 1', 'Patio 2'
-];
 
 export const POSBilling: React.FC<POSBillingProps> = ({
   menuItems,
@@ -52,9 +58,13 @@ export const POSBilling: React.FC<POSBillingProps> = ({
   categories: passedCategories,
   tags = [],
   currentUser,
+  tables = defaultRestaurantTables,
   onSaveOrder,
   onViewInvoice,
   onOpenTableQR,
+  onSaveTable,
+  onDeleteTable,
+  onBatchAddTables,
 }) => {
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -63,10 +73,17 @@ export const POSBilling: React.FC<POSBillingProps> = ({
   
   // Order Configuration State
   const [orderType, setOrderType] = useState<OrderType>('dine-in');
-  const [tableNumber, setTableNumber] = useState<string>('Table 1');
+  const [tableNumber, setTableNumber] = useState<string>(() => {
+    return tables.length > 0 ? tables[0].name : 'Table 1';
+  });
   const [customerName, setCustomerName] = useState<string>('');
   const [customerPhone, setCustomerPhone] = useState<string>('');
   
+  // Table Manager Modal States
+  const [isTableManagerOpen, setIsTableManagerOpen] = useState(false);
+  const [isQuickAddOpen, setIsQuickAddOpen] = useState(false);
+  const [selectedPosSection, setSelectedPosSection] = useState<string>('All');
+
   // Cart Items State
   const [cart, setCart] = useState<OrderItem[]>([]);
   
@@ -335,39 +352,90 @@ export const POSBilling: React.FC<POSBillingProps> = ({
 
           {/* Table Selector (If Dine-in) */}
           {orderType === 'dine-in' && (
-            <div className="flex items-center gap-1.5 overflow-x-auto max-w-full py-0.5">
-              <span className="text-[11px] font-semibold text-slate-400 dark:text-slate-500 shrink-0">Table:</span>
-              <div className="flex items-center gap-1">
-                {TABLES.map((tbl) => {
-                  const pendingOrder = getTablePendingOrder(tbl);
-                  const isOccupied = !!pendingOrder;
-                  const isSelected = tableNumber === tbl;
+            <div className="flex items-center gap-2 overflow-x-auto max-w-full py-0.5">
+              
+              {/* Section Filter Dropdown / Pill */}
+              {Array.from(new Set(tables.map(t => t.section).filter(Boolean))).length > 1 && (
+                <div className="flex items-center gap-1 shrink-0">
+                  <select
+                    value={selectedPosSection}
+                    onChange={(e) => setSelectedPosSection(e.target.value)}
+                    className="px-2 py-1 text-[11px] font-bold bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200 rounded-lg focus:outline-none cursor-pointer"
+                  >
+                    <option value="All">All Areas ({tables.length})</option>
+                    {Array.from(new Set(tables.map(t => t.section).filter(Boolean))).map((sec) => (
+                      <option key={sec} value={sec}>
+                        {sec} ({tables.filter(t => t.section === sec).length})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
 
-                  return (
-                    <button
-                      key={tbl}
-                      type="button"
-                      onClick={() => setTableNumber(tbl)}
-                      className={`px-2.5 py-1 text-[11px] font-bold rounded-lg shrink-0 transition-all flex items-center gap-1.5 cursor-pointer ${
-                        isSelected
-                          ? 'bg-slate-900 dark:bg-amber-500 text-amber-400 dark:text-slate-950 shadow-xs ring-2 ring-amber-400'
-                          : isOccupied
-                          ? 'bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-700/60 text-amber-900 dark:text-amber-300 hover:bg-amber-100'
-                          : 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-emerald-50 dark:hover:bg-emerald-950/30'
-                      }`}
-                      title={isOccupied ? `${tbl} is Occupied (Pending: ${formatCurrency(pendingOrder.total, profile.currencySymbol)})` : `${tbl} is Available to serve next customer`}
-                    >
-                      <span className={`w-1.5 h-1.5 rounded-full ${isOccupied ? 'bg-amber-500 animate-pulse' : 'bg-emerald-500'}`} />
-                      <span>{tbl}</span>
-                      {isOccupied && (
-                        <span className="text-[9px] px-1 py-0.2 bg-amber-200 dark:bg-amber-900 text-amber-950 dark:text-amber-200 rounded font-black">
-                          Busy
-                        </span>
-                      )}
-                    </button>
-                  );
-                })}
+              {/* Table Buttons */}
+              <div className="flex items-center gap-1.5 overflow-x-auto">
+                {tables
+                  .filter(t => selectedPosSection === 'All' || t.section === selectedPosSection)
+                  .map((tbl) => {
+                    const pendingOrder = getTablePendingOrder(tbl.name);
+                    const isOccupied = !!pendingOrder;
+                    const isSelected = tableNumber === tbl.name;
+
+                    return (
+                      <button
+                        key={tbl.id || tbl.name}
+                        type="button"
+                        onClick={() => setTableNumber(tbl.name)}
+                        className={`px-2.5 py-1 text-[11px] font-bold rounded-lg shrink-0 transition-all flex items-center gap-1.5 cursor-pointer ${
+                          isSelected
+                            ? 'bg-slate-900 dark:bg-amber-500 text-amber-400 dark:text-slate-950 shadow-xs ring-2 ring-amber-400'
+                            : isOccupied
+                            ? 'bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-700/60 text-amber-900 dark:text-amber-300 hover:bg-amber-100'
+                            : 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-emerald-50 dark:hover:bg-emerald-950/30'
+                        }`}
+                        title={
+                          isOccupied 
+                            ? `${tbl.name} (${tbl.section}) is Occupied • Bill: ${formatCurrency(pendingOrder.total, profile.currencySymbol)}` 
+                            : `${tbl.name} (${tbl.section}, ${tbl.capacity} seats) is Free`
+                        }
+                      >
+                        <span className={`w-1.5 h-1.5 rounded-full ${isOccupied ? 'bg-amber-500 animate-pulse' : 'bg-emerald-500'}`} />
+                        <span>{tbl.name}</span>
+                        <span className="text-[10px] opacity-70 font-mono">({tbl.capacity}p)</span>
+                        {isOccupied && (
+                          <span className="text-[9px] px-1 py-0.2 bg-amber-200 dark:bg-amber-900 text-amber-950 dark:text-amber-200 rounded font-black">
+                            Busy
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
               </div>
+
+              {/* Quick Add Table Button */}
+              {onSaveTable && (
+                <button
+                  type="button"
+                  onClick={() => setIsQuickAddOpen(true)}
+                  title="Add new dining table to floor"
+                  className="px-2 py-1 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 border border-dashed border-slate-300 dark:border-slate-600 rounded-lg text-[11px] font-bold shrink-0 transition-all flex items-center gap-1 cursor-pointer"
+                >
+                  <Plus className="w-3 h-3 text-amber-500" />
+                  <span>Table</span>
+                </button>
+              )}
+
+              {/* Manage Tables Button */}
+              <button
+                type="button"
+                onClick={() => setIsTableManagerOpen(true)}
+                title="Manage Floor Tables & Seating Capacity"
+                className="px-2 py-1 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 rounded-lg text-[10px] font-bold shrink-0 transition-all flex items-center gap-1 cursor-pointer"
+              >
+                <Settings2 className="w-3 h-3 text-slate-500" />
+                <span className="hidden sm:inline">Manage</span>
+              </button>
+
               {onOpenTableQR && (
                 <button
                   type="button"
@@ -1191,6 +1259,44 @@ export const POSBilling: React.FC<POSBillingProps> = ({
             </div>
           </div>
         </div>
+      )}
+
+      {/* Full Floor Table Management Hub */}
+      <TableManagementModal
+        isOpen={isTableManagerOpen}
+        onClose={() => setIsTableManagerOpen(false)}
+        tables={tables}
+        orders={existingOrders}
+        profile={profile}
+        onSaveTable={(tbl) => {
+          if (onSaveTable) onSaveTable(tbl);
+        }}
+        onDeleteTable={(tblId) => {
+          if (onDeleteTable) onDeleteTable(tblId);
+        }}
+        onBatchAddTables={(newTbls) => {
+          if (onBatchAddTables) onBatchAddTables(newTbls);
+        }}
+        onSelectTableForBilling={(tblName) => {
+          setOrderType('dine-in');
+          setTableNumber(tblName);
+          setIsTableManagerOpen(false);
+        }}
+      />
+
+      {/* Quick Add Single Table Modal */}
+      {isQuickAddOpen && (
+        <TableEditorModal
+          isOpen={isQuickAddOpen}
+          onClose={() => setIsQuickAddOpen(false)}
+          table={null}
+          existingTables={tables}
+          onSave={(newTable) => {
+            if (onSaveTable) onSaveTable(newTable);
+            setTableNumber(newTable.name);
+            setIsQuickAddOpen(false);
+          }}
+        />
       )}
     </div>
   );

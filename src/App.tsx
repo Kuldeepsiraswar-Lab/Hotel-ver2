@@ -9,7 +9,8 @@ import {
   AppNotification,
   StaffUser,
   MenuTag,
-  TagColor
+  TagColor,
+  RestaurantTable
 } from './types';
 import { 
   defaultRestaurantProfile, 
@@ -18,7 +19,8 @@ import {
   defaultExpenses,
   defaultMenuCategories,
   defaultStaffAccounts,
-  defaultMenuTags
+  defaultMenuTags,
+  defaultRestaurantTables
 } from './data/defaultData';
 import { Navbar, NavTab } from './components/Navbar';
 import { Sidebar } from './components/Sidebar';
@@ -147,6 +149,9 @@ export default function App() {
 
   // Menu & Recipe Tags State (Online Cloud First)
   const [tags, setTags] = useState<MenuTag[]>(defaultMenuTags);
+
+  // Restaurant Dining Tables State (Cloud First)
+  const [tables, setTables] = useState<RestaurantTable[]>(defaultRestaurantTables);
 
   // Notifications State (Table QR Orders, live alerts)
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
@@ -305,6 +310,7 @@ export default function App() {
     let unsubTags: (() => void) | undefined;
     let unsubStaff: (() => void) | undefined;
     let unsubNotifications: (() => void) | undefined;
+    let unsubTables: (() => void) | undefined;
 
     const setupCloudDatabase = async () => {
       try {
@@ -317,6 +323,15 @@ export default function App() {
 
         unsubMenu = CloudDatabaseService.subscribeMenuItems((cloudItems) => {
           setMenuItems(cloudItems || []);
+        });
+
+        unsubTables = CloudDatabaseService.subscribeTables((cloudTables) => {
+          if (cloudTables && cloudTables.length > 0) {
+            setTables(cloudTables);
+          } else {
+            setTables(defaultRestaurantTables);
+            CloudDatabaseService.saveAllTables(defaultRestaurantTables);
+          }
         });
 
         unsubStaff = CloudDatabaseService.subscribeStaff((cloudStaff) => {
@@ -405,6 +420,7 @@ export default function App() {
       if (unsubTags) unsubTags();
       if (unsubStaff) unsubStaff();
       if (unsubNotifications) unsubNotifications();
+      if (unsubTables) unsubTables();
     };
   }, []);
 
@@ -516,6 +532,45 @@ export default function App() {
     setStaffList(prev => prev.filter(s => s.id !== staffId));
     CloudDatabaseService.deleteStaffMember(staffId);
     showCloudToast("Staff member removed from roster");
+  };
+
+  // Table Management Handlers
+  const handleSaveTable = (table: RestaurantTable) => {
+    setTables(prev => {
+      const idx = prev.findIndex(t => t.id === table.id || t.name.toLowerCase() === table.name.toLowerCase());
+      if (idx >= 0) {
+        const updated = [...prev];
+        updated[idx] = table;
+        return updated;
+      }
+      return [...prev, table];
+    });
+    CloudDatabaseService.saveTable(table);
+    showCloudToast(`Saved table: ${table.name} (${table.section})`);
+  };
+
+  const handleDeleteTable = (tableId: string) => {
+    const tbl = tables.find(t => t.id === tableId);
+    setTables(prev => prev.filter(t => t.id !== tableId));
+    CloudDatabaseService.deleteTable(tableId);
+    showCloudToast(`Deleted table ${tbl ? tbl.name : ''}`);
+  };
+
+  const handleBatchAddTables = (newTables: RestaurantTable[]) => {
+    setTables(prev => {
+      const merged = [...prev];
+      newTables.forEach(nt => {
+        const idx = merged.findIndex(t => t.name.toLowerCase() === nt.name.toLowerCase());
+        if (idx >= 0) {
+          merged[idx] = nt;
+        } else {
+          merged.push(nt);
+        }
+      });
+      return merged;
+    });
+    CloudDatabaseService.saveAllTables(newTables);
+    showCloudToast(`Created ${newTables.length} tables in cloud`);
   };
 
   // Order Handlers
@@ -1217,9 +1272,13 @@ export default function App() {
                   categories={categories}
                   tags={tags}
                   currentUser={currentUser}
+                  tables={tables}
                   onSaveOrder={handleSaveOrder}
                   onViewInvoice={(order) => setViewingInvoice(order)}
                   onOpenTableQR={handleOpenTableQR}
+                  onSaveTable={handleSaveTable}
+                  onDeleteTable={handleDeleteTable}
+                  onBatchAddTables={handleBatchAddTables}
                 />
               )}
 
@@ -1288,7 +1347,11 @@ export default function App() {
                 <TableQRView
                   profile={profile}
                   orders={orders}
+                  tables={tables}
                   currentUser={currentUser}
+                  onSaveTable={handleSaveTable}
+                  onDeleteTable={handleDeleteTable}
+                  onBatchAddTables={handleBatchAddTables}
                   onOpenCustomerView={(tableNum) => {
                     setCustomerTableMode(tableNum);
                   }}
@@ -1305,6 +1368,10 @@ export default function App() {
         isOpen={isTableQROpen}
         onClose={() => setIsTableQROpen(false)}
         profile={profile}
+        tables={tables}
+        onSaveTable={handleSaveTable}
+        onDeleteTable={handleDeleteTable}
+        onBatchAddTables={handleBatchAddTables}
         onOpenCustomerView={(tableNum) => {
           setCustomerTableMode(tableNum);
         }}

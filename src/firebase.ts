@@ -13,7 +13,7 @@ import {
   orderBy
 } from 'firebase/firestore';
 import firebaseConfig from '../firebase-applet-config.json';
-import { MenuItem, BillOrder, Expense, RestaurantProfile, StaffUser, AppNotification, MenuTag } from './types';
+import { MenuItem, BillOrder, Expense, RestaurantProfile, StaffUser, AppNotification, MenuTag, RestaurantTable } from './types';
 
 // Initialize Firebase App
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
@@ -36,6 +36,7 @@ export const COLLECTIONS = {
   TAGS: 'menu_tags',
   STAFF: 'staff_accounts',
   NOTIFICATIONS: 'notifications',
+  TABLES: 'restaurant_tables',
 };
 
 /**
@@ -423,6 +424,60 @@ export const CloudDatabaseService = {
     });
   },
 
+  // ================= RESTAURANT TABLES =================
+  async saveTable(table: RestaurantTable) {
+    try {
+      const cleanData = sanitizeForFirestore(table);
+      const tableRef = doc(db, COLLECTIONS.TABLES, table.id);
+      await setDoc(tableRef, cleanData, { merge: true });
+      return true;
+    } catch (err) {
+      handleFirestoreError(err, OperationType.WRITE, `${COLLECTIONS.TABLES}/${table.id}`);
+      return false;
+    }
+  },
+
+  async deleteTable(tableId: string) {
+    try {
+      const tableRef = doc(db, COLLECTIONS.TABLES, tableId);
+      await deleteDoc(tableRef);
+      return true;
+    } catch (err) {
+      handleFirestoreError(err, OperationType.DELETE, `${COLLECTIONS.TABLES}/${tableId}`);
+      return false;
+    }
+  },
+
+  async saveAllTables(tables: RestaurantTable[]) {
+    try {
+      const batch = writeBatch(db);
+      for (const tbl of tables) {
+        const tableRef = doc(db, COLLECTIONS.TABLES, tbl.id);
+        batch.set(tableRef, sanitizeForFirestore(tbl), { merge: true });
+      }
+      await batch.commit();
+      return true;
+    } catch (err) {
+      handleFirestoreError(err, OperationType.WRITE, COLLECTIONS.TABLES);
+      return false;
+    }
+  },
+
+  subscribeTables(onUpdate: (tables: RestaurantTable[]) => void) {
+    const q = query(collection(db, COLLECTIONS.TABLES));
+    return onSnapshot(q, (snapshot) => {
+      const tables: RestaurantTable[] = [];
+      snapshot.forEach((docSnap) => {
+        tables.push(docSnap.data() as RestaurantTable);
+      });
+      // Sort by sortOrder or name
+      tables.sort((a, b) => (a.sortOrder || 999) - (b.sortOrder || 999));
+      onUpdate(tables);
+    }, (error) => {
+      handleFirestoreError(error, OperationType.LIST, COLLECTIONS.TABLES);
+    });
+  },
+
   // ================= SEED ALL DATA INTO GOOGLE CLOUD =================
   async syncAllToCloud(data: {
     profile: RestaurantProfile;
@@ -432,6 +487,7 @@ export const CloudDatabaseService = {
     categories: string[];
     tags?: MenuTag[];
     staff?: StaffUser[];
+    tables?: RestaurantTable[];
   }) {
     try {
       // 1. Profile
@@ -484,6 +540,16 @@ export const CloudDatabaseService = {
         await staffBatch.commit();
       }
 
+      // 8. Restaurant Tables (Batch write if provided)
+      if (data.tables && data.tables.length > 0) {
+        const tablesBatch = writeBatch(db);
+        for (const t of data.tables) {
+          const tRef = doc(db, COLLECTIONS.TABLES, t.id);
+          tablesBatch.set(tRef, sanitizeForFirestore(t), { merge: true });
+        }
+        await tablesBatch.commit();
+      }
+
       return true;
     } catch (err) {
       handleFirestoreError(err, OperationType.WRITE, 'syncAllToCloud');
@@ -528,7 +594,13 @@ export const CloudDatabaseService = {
       notifSnap.forEach(d => notifBatch.delete(d.ref));
       await notifBatch.commit();
 
-      // 5. Reset categories
+      // 5. Delete tables
+      const tablesSnap = await getDocs(collection(db, COLLECTIONS.TABLES));
+      const tablesBatch = writeBatch(db);
+      tablesSnap.forEach(d => tablesBatch.delete(d.ref));
+      await tablesBatch.commit();
+
+      // 6. Reset categories
       await setDoc(doc(db, COLLECTIONS.CATEGORIES, 'main_categories'), { list: [] });
 
       return true;

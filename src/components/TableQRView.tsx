@@ -7,87 +7,136 @@ import {
   Check, 
   ExternalLink, 
   Plus, 
-  Trash2, 
   Sparkles, 
   Wifi, 
   Utensils, 
   Layers, 
-  Smartphone, 
+  Smartphone,
   Info,
-  CheckCircle2,
-  Clock,
+  Edit3,
+  Trash2,
+  Users,
+  Search,
   Radio,
-  Eye,
-  BellRing,
-  Wine,
-  Receipt
+  Clock,
+  AlertTriangle,
+  Square,
+  Circle,
+  RectangleHorizontal,
+  ChevronRight,
+  Filter,
+  CheckCircle2,
+  RefreshCw
 } from 'lucide-react';
 import QRCode from 'qrcode';
-import { RestaurantProfile, BillOrder, StaffUser } from '../types';
+import { RestaurantProfile, BillOrder, RestaurantTable, TableSection } from '../types';
+import { DEFAULT_TABLE_SECTIONS } from '../data/defaultData';
+import { formatCurrency } from '../utils/formatters';
+import { TableEditorModal } from './TableEditorModal';
+import { BatchAddTablesModal } from './BatchAddTablesModal';
 
 interface TableQRViewProps {
   profile: RestaurantProfile;
   orders: BillOrder[];
-  currentUser: StaffUser | null;
+  tables: RestaurantTable[];
+  onSaveTable: (table: RestaurantTable) => void;
+  onDeleteTable: (tableId: string) => void;
+  onBatchAddTables: (tables: RestaurantTable[]) => void;
   onOpenCustomerView: (tableNumber: string) => void;
-  onServiceRequest?: (tableNumber: string, requestType: 'drink' | 'bill' | 'waiter' | 'cutlery' | 'custom', note?: string) => void;
+  onOpenPOSWithTable?: (tableNumber: string) => void;
 }
-
-const DEFAULT_TABLES = [
-  'Table 1', 'Table 2', 'Table 3', 'Table 4', 
-  'Table 5', 'Table 6', 'Table 7', 'Table 8',
-  'Bar 1', 'Bar 2', 'Patio 1', 'Patio 2'
-];
 
 export const TableQRView: React.FC<TableQRViewProps> = ({
   profile,
   orders,
-  currentUser,
+  tables,
+  onSaveTable,
+  onDeleteTable,
+  onBatchAddTables,
   onOpenCustomerView,
-  onServiceRequest,
+  onOpenPOSWithTable,
 }) => {
-  const [tablesList, setTablesList] = useState<string[]>(() => {
-    try {
-      const saved = localStorage.getItem('pos_tables_list');
-      if (saved) return JSON.parse(saved);
-    } catch (e) {
-      // fallback
-    }
-    return DEFAULT_TABLES;
+  const [selectedTableName, setSelectedTableName] = useState<string>(() => {
+    return tables.length > 0 ? tables[0].name : 'Table 1';
   });
-
-  const [selectedTable, setSelectedTable] = useState<string>('Table 1');
-  const [newTableName, setNewTableName] = useState<string>('');
+  const [selectedSection, setSelectedSection] = useState<string>('All');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'available' | 'occupied'>('all');
+  const [searchQuery, setSearchQuery] = useState<string>('');
+  
+  // Wi-Fi Standee Settings
   const [wifiSsid, setWifiSsid] = useState<string>(profile.name ? `${profile.name}_Guest_WiFi` : 'Restaurant_Guest_WiFi');
   const [wifiPassword, setWifiPassword] = useState<string>('DineIn123');
   const [showWifiOnStandee, setShowWifiOnStandee] = useState<boolean>(true);
-  const [standeeTheme, setStandeeTheme] = useState<'classic' | 'minimal' | 'dark'>('classic');
+  const [standeeTheme, setStandeeTheme] = useState<'dark' | 'gold' | 'minimal'>('dark');
+
+  // Modals & UI States
+  const [isEditorOpen, setIsEditorOpen] = useState<boolean>(false);
+  const [editingTable, setEditingTable] = useState<RestaurantTable | null>(null);
+  const [isBatchOpen, setIsBatchOpen] = useState<boolean>(false);
+  const [tableToDelete, setTableToDelete] = useState<RestaurantTable | null>(null);
+  
   const [copied, setCopied] = useState<boolean>(false);
   const [qrDataUrl, setQrDataUrl] = useState<string>('');
 
-  // Persist tables to localStorage
+  // Keep selected table valid if tables change
   useEffect(() => {
-    try {
-      localStorage.setItem('pos_tables_list', JSON.stringify(tablesList));
-    } catch (e) {
-      // Ignore
+    if (tables.length > 0 && !tables.some(t => t.name === selectedTableName)) {
+      setSelectedTableName(tables[0].name);
     }
-  }, [tablesList]);
+  }, [tables, selectedTableName]);
 
-  // Generate current ordering URL for the selected table
+  // Selected table object
+  const currentTableObj = tables.find(t => t.name === selectedTableName) || tables[0];
+
+  // Unique sections for tabs
+  const availableSections = ['All', ...Array.from(new Set(tables.map(t => t.section).filter(Boolean)))];
+
+  // Helper for active table order
+  const getTableActiveOrder = (tblName: string) => {
+    if (!tblName) return undefined;
+    const cleanTbl = tblName.trim().toLowerCase();
+    return orders.find(o => 
+      o.tableNumber && o.tableNumber.trim().toLowerCase() === cleanTbl && 
+      o.paymentStatus === 'pending' && 
+      !o.isArchived
+    );
+  };
+
+  // Filtered tables list
+  const filteredTables = tables.filter(t => {
+    const matchesSection = selectedSection === 'All' || t.section === selectedSection;
+    const q = searchQuery.trim().toLowerCase();
+    const matchesSearch = !q || 
+      t.name.toLowerCase().includes(q) || 
+      (t.section && t.section.toLowerCase().includes(q)) ||
+      (t.notes && t.notes.toLowerCase().includes(q));
+
+    const activeOrder = getTableActiveOrder(t.name);
+    const matchesStatus = 
+      statusFilter === 'all' ? true :
+      statusFilter === 'occupied' ? Boolean(activeOrder) :
+      !activeOrder;
+
+    return matchesSection && matchesSearch && matchesStatus;
+  });
+
+  const occupiedCount = tables.filter(t => !!getTableActiveOrder(t.name)).length;
+  const totalCapacity = tables.reduce((sum, t) => sum + (t.capacity || 4), 0);
+
+  // Generate current ordering URL
   const baseUrl = typeof window !== 'undefined' ? `${window.location.origin}${window.location.pathname}` : '';
-  const currentTableUrl = `${baseUrl}?table=${encodeURIComponent(selectedTable)}`;
+  const currentTableUrl = `${baseUrl}?table=${encodeURIComponent(selectedTableName || 'Table 1')}`;
 
-  // Generate QR Code image when selectedTable changes
+  // Generate QR Code data URL
   useEffect(() => {
-    if (!selectedTable) return;
+    if (!selectedTableName) return;
     
     QRCode.toDataURL(currentTableUrl, {
-      width: 360,
+      width: 320,
       margin: 2,
       color: {
-        dark: standeeTheme === 'dark' ? '#fbbf24' : '#0f172a',
-        light: standeeTheme === 'dark' ? '#020617' : '#ffffff',
+        dark: standeeTheme === 'gold' ? '#78350f' : '#0f172a',
+        light: '#ffffff',
       },
       errorCorrectionLevel: 'H'
     })
@@ -97,28 +146,7 @@ export const TableQRView: React.FC<TableQRViewProps> = ({
       .catch(err => {
         console.error('Error generating QR code:', err);
       });
-  }, [selectedTable, currentTableUrl, standeeTheme]);
-
-  const handleAddTable = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newTableName.trim()) return;
-    const formatted = newTableName.trim();
-    if (!tablesList.includes(formatted)) {
-      const updated = [...tablesList, formatted];
-      setTablesList(updated);
-      setSelectedTable(formatted);
-    }
-    setNewTableName('');
-  };
-
-  const handleDeleteTable = (tbl: string) => {
-    if (tablesList.length <= 1) return;
-    const updated = tablesList.filter(t => t !== tbl);
-    setTablesList(updated);
-    if (selectedTable === tbl) {
-      setSelectedTable(updated[0]);
-    }
-  };
+  }, [selectedTableName, currentTableUrl, standeeTheme]);
 
   const handleCopyLink = () => {
     navigator.clipboard.writeText(currentTableUrl);
@@ -130,7 +158,7 @@ export const TableQRView: React.FC<TableQRViewProps> = ({
     if (!qrDataUrl) return;
     const link = document.createElement('a');
     link.href = qrDataUrl;
-    link.download = `${profile.name.replace(/\s+/g, '_')}_${selectedTable.replace(/\s+/g, '_')}_QR.png`;
+    link.download = `${profile.name.replace(/\s+/g, '_')}_${selectedTableName.replace(/\s+/g, '_')}_QR.png`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -140,13 +168,16 @@ export const TableQRView: React.FC<TableQRViewProps> = ({
     const printWindow = window.open('', '_blank');
     if (!printWindow) return;
 
+    const secName = currentTableObj?.section || 'Main Dining';
+    const cap = currentTableObj?.capacity || 4;
+
     printWindow.document.write(`
       <!DOCTYPE html>
       <html>
         <head>
-          <title>Table Standee - ${selectedTable} - ${profile.name}</title>
+          <title>Table Standee - ${selectedTableName} - ${profile.name}</title>
           <style>
-            @page { size: auto; margin: 15mm; }
+            @page { size: auto; margin: 12mm; }
             body { 
               font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
               margin: 0; 
@@ -177,7 +208,7 @@ export const TableQRView: React.FC<TableQRViewProps> = ({
             .tagline {
               font-size: 11px;
               color: #64748b;
-              margin-bottom: 16px;
+              margin-bottom: 14px;
             }
             .table-badge {
               display: inline-block;
@@ -187,8 +218,14 @@ export const TableQRView: React.FC<TableQRViewProps> = ({
               font-size: 15px;
               padding: 6px 18px;
               border-radius: 12px;
-              margin-bottom: 16px;
+              margin-bottom: 4px;
               text-transform: uppercase;
+            }
+            .section-badge {
+              font-size: 11px;
+              font-weight: 700;
+              color: #64748b;
+              margin-bottom: 14px;
             }
             .qr-wrap {
               background: #f8fafc;
@@ -196,11 +233,11 @@ export const TableQRView: React.FC<TableQRViewProps> = ({
               padding: 12px;
               border-radius: 18px;
               display: inline-block;
-              margin-bottom: 16px;
+              margin-bottom: 14px;
             }
             .qr-img {
-              width: 220px;
-              height: 220px;
+              width: 210px;
+              height: 210px;
               display: block;
             }
             .scan-instructions {
@@ -212,7 +249,7 @@ export const TableQRView: React.FC<TableQRViewProps> = ({
             .sub-instructions {
               font-size: 11px;
               color: #64748b;
-              margin-bottom: 16px;
+              margin-bottom: 14px;
             }
             .wifi-box {
               background: #f1f5f9;
@@ -236,12 +273,13 @@ export const TableQRView: React.FC<TableQRViewProps> = ({
           <div class="standee">
             <div class="brand-name">${profile.name}</div>
             <div class="tagline">${profile.tagline || 'Contactless Table Ordering'}</div>
-            <div class="table-badge">${selectedTable}</div>
+            <div class="table-badge">${selectedTableName}</div>
+            <div class="section-badge">${secName} • Seating for ${cap}</div>
             <div class="qr-wrap">
               <img src="${qrDataUrl}" class="qr-img" />
             </div>
             <div class="scan-instructions">📲 Scan with Camera to Order</div>
-            <div class="sub-instructions">Browse digital menu, order food & get live bill</div>
+            <div class="sub-instructions">Browse digital menu, order food & get live bill updates</div>
             ${showWifiOnStandee && wifiSsid ? `
               <div class="wifi-box">
                 <div class="wifi-row">
@@ -272,8 +310,8 @@ export const TableQRView: React.FC<TableQRViewProps> = ({
 
     // Generate QR images for all tables
     const tableCards = await Promise.all(
-      tablesList.map(async (tbl) => {
-        const url = `${baseUrl}?table=${encodeURIComponent(tbl)}`;
+      tables.map(async (tbl) => {
+        const url = `${baseUrl}?table=${encodeURIComponent(tbl.name)}`;
         const qr = await QRCode.toDataURL(url, {
           width: 220,
           margin: 1,
@@ -321,11 +359,17 @@ export const TableQRView: React.FC<TableQRViewProps> = ({
               background: #0f172a;
               color: #fbbf24;
               font-weight: 800;
-              font-size: 12px;
+              font-size: 13px;
               padding: 4px 14px;
               border-radius: 8px;
-              margin: 8px 0;
+              margin: 6px 0 2px 0;
               text-transform: uppercase;
+            }
+            .section-badge {
+              font-size: 10px;
+              color: #64748b;
+              font-weight: bold;
+              margin-bottom: 6px;
             }
             .qr-img {
               width: 140px;
@@ -341,7 +385,7 @@ export const TableQRView: React.FC<TableQRViewProps> = ({
             .sub-instructions {
               font-size: 10px;
               color: #64748b;
-              margin-bottom: 8px;
+              margin-bottom: 6px;
             }
             .wifi-box {
               background: #f1f5f9;
@@ -358,9 +402,10 @@ export const TableQRView: React.FC<TableQRViewProps> = ({
             ${tableCards.map(({ tbl, qr }) => `
               <div class="standee">
                 <div class="brand-name">${profile.name}</div>
-                <div class="table-badge">${tbl}</div>
+                <div class="table-badge">${tbl.name}</div>
+                <div class="section-badge">${tbl.section} • ${tbl.capacity} Seats</div>
                 <img src="${qr}" class="qr-img" />
-                <div class="scan-instructions">📲 Scan to Order from Table</div>
+                <div class="scan-instructions">📲 Scan to Order</div>
                 <div class="sub-instructions">Instant digital menu & live bill tracking</div>
                 ${showWifiOnStandee && wifiSsid ? `
                   <div class="wifi-box">
@@ -379,21 +424,15 @@ export const TableQRView: React.FC<TableQRViewProps> = ({
     printWindow.document.close();
   };
 
-  // Calculate table active orders
-  const getTableActiveOrder = (tbl: string) => {
-    if (!tbl) return undefined;
-    const cleanTbl = tbl.trim().toLowerCase();
-    return orders.find(o => 
-      o.tableNumber && o.tableNumber.trim().toLowerCase() === cleanTbl && 
-      o.paymentStatus === 'pending' && 
-      !o.isArchived
-    );
+  const handleDeleteConfirm = () => {
+    if (!tableToDelete) return;
+    onDeleteTable(tableToDelete.id);
+    setTableToDelete(null);
   };
-
-  const occupiedTablesCount = tablesList.filter(tbl => !!getTableActiveOrder(tbl)).length;
 
   return (
     <div className="space-y-6">
+      
       {/* Top Banner Header */}
       <div className="bg-slate-900 text-white rounded-3xl p-5 sm:p-6 shadow-xl border border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-center gap-4">
@@ -403,459 +442,558 @@ export const TableQRView: React.FC<TableQRViewProps> = ({
           <div>
             <div className="flex items-center gap-2.5 flex-wrap">
               <h1 className="text-xl sm:text-2xl font-black tracking-tight text-white">
-                Table QR Code Self-Ordering
+                Dining Floor & Table QR Hub
               </h1>
               <span className="px-2.5 py-0.5 bg-emerald-500/20 text-emerald-300 font-bold text-xs rounded-full uppercase border border-emerald-500/40 flex items-center gap-1.5">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                Live Self-Order System
+                Live Cloud Sync
               </span>
             </div>
             <p className="text-xs sm:text-sm text-slate-300 mt-1 max-w-2xl">
-              Guests scan table QR standees with their phone cameras to view the live digital menu, place food orders straight to KDS & POS, and check out without waiting for staff.
+              Manage dining tables, seating capacities, floor sections, and customize live QR standees for customer contactless ordering.
             </p>
           </div>
         </div>
 
-        {/* Quick Actions Header */}
+        {/* Quick Actions */}
         <div className="flex items-center gap-2.5 self-start md:self-auto flex-wrap">
           <button
             type="button"
-            onClick={() => onOpenCustomerView(selectedTable)}
-            className="px-4 py-2.5 bg-amber-400 hover:bg-amber-300 text-slate-950 font-black rounded-xl text-xs transition-all shadow-md flex items-center gap-2 cursor-pointer group"
+            onClick={() => setIsBatchOpen(true)}
+            className="px-3.5 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold rounded-xl text-xs transition-all border border-slate-700 flex items-center gap-1.5 cursor-pointer shadow-xs"
           >
-            <Smartphone className="w-4 h-4 group-hover:scale-110 transition-transform" />
-            <span>Test Customer View ({selectedTable})</span>
+            <Layers className="w-4 h-4 text-amber-400" />
+            <span>Bulk Add Tables</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setEditingTable(null);
+              setIsEditorOpen(true);
+            }}
+            className="px-4 py-2.5 bg-amber-400 hover:bg-amber-300 text-slate-950 font-black rounded-xl text-xs transition-all shadow-md flex items-center gap-1.5 cursor-pointer"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Add Table</span>
           </button>
 
           <button
             type="button"
             onClick={handlePrintAllTables}
-            className="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-white font-bold rounded-xl text-xs transition-all border border-slate-700 flex items-center gap-2 cursor-pointer shadow-xs"
+            className="px-3.5 py-2.5 bg-slate-800 hover:bg-slate-700 text-white font-bold rounded-xl text-xs transition-all border border-slate-700 flex items-center gap-1.5 cursor-pointer shadow-xs"
           >
             <Printer className="w-4 h-4 text-amber-400" />
-            <span>Print All Standees ({tablesList.length})</span>
+            <span>Print All Standees ({tables.length})</span>
           </button>
         </div>
       </div>
 
       {/* Metrics Bar */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
         <div className="bg-white dark:bg-slate-900 rounded-2xl p-4 border border-slate-200 dark:border-slate-800 shadow-xs flex items-center justify-between">
           <div>
-            <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">Total Registered Tables</p>
-            <p className="text-2xl font-black text-slate-900 dark:text-white mt-0.5">{tablesList.length}</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">Registered Tables</p>
+            <p className="text-2xl font-black text-slate-900 dark:text-white mt-0.5">{tables.length}</p>
           </div>
           <div className="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-black">
-            <Layers className="w-5 h-5" />
-          </div>
-        </div>
-
-        <div className="bg-white dark:bg-slate-900 rounded-2xl p-4 border border-slate-200 dark:border-slate-800 shadow-xs flex items-center justify-between">
-          <div>
-            <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">Active Dine-in Bills</p>
-            <p className="text-2xl font-black text-amber-600 dark:text-amber-400 mt-0.5">{occupiedTablesCount}</p>
-          </div>
-          <div className="w-10 h-10 rounded-xl bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 flex items-center justify-center font-black">
             <Utensils className="w-5 h-5" />
           </div>
         </div>
 
         <div className="bg-white dark:bg-slate-900 rounded-2xl p-4 border border-slate-200 dark:border-slate-800 shadow-xs flex items-center justify-between">
           <div>
-            <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">Selected Table Status</p>
-            <div className="flex items-center gap-1.5 mt-1">
-              <span className={`w-2 h-2 rounded-full ${getTableActiveOrder(selectedTable) ? 'bg-amber-500 animate-ping' : 'bg-emerald-500'}`} />
-              <p className="text-xs font-bold text-slate-800 dark:text-slate-200">
-                {getTableActiveOrder(selectedTable) ? 'Active Order In Progress' : 'Ready / Available'}
-              </p>
-            </div>
+            <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">Total Seating Capacity</p>
+            <p className="text-2xl font-black text-slate-900 dark:text-white mt-0.5">{totalCapacity} Seats</p>
+          </div>
+          <div className="w-10 h-10 rounded-xl bg-purple-50 dark:bg-purple-950/60 text-purple-600 dark:text-purple-400 flex items-center justify-center font-black">
+            <Users className="w-5 h-5" />
+          </div>
+        </div>
+
+        <div className="bg-white dark:bg-slate-900 rounded-2xl p-4 border border-slate-200 dark:border-slate-800 shadow-xs flex items-center justify-between">
+          <div>
+            <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">Occupied Tables</p>
+            <p className="text-2xl font-black text-amber-600 dark:text-amber-400 mt-0.5">{occupiedCount}</p>
+          </div>
+          <div className="w-10 h-10 rounded-xl bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 flex items-center justify-center font-black">
+            <Radio className="w-5 h-5 animate-pulse" />
+          </div>
+        </div>
+
+        <div className="bg-white dark:bg-slate-900 rounded-2xl p-4 border border-slate-200 dark:border-slate-800 shadow-xs flex items-center justify-between">
+          <div>
+            <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">Available / Ready</p>
+            <p className="text-2xl font-black text-emerald-600 dark:text-emerald-400 mt-0.5">{tables.length - occupiedCount}</p>
           </div>
           <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-black">
-            <Radio className="w-5 h-5" />
+            <CheckCircle2 className="w-5 h-5" />
           </div>
         </div>
       </div>
 
-      {/* Main Grid: Management & Live Standee Preview */}
+      {/* Main Content Grid: Tables Floor + Standee Config & Preview */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         
-        {/* Left Side: Table Selector, Wi-Fi Setup & Standee Options */}
-        <div className="lg:col-span-7 space-y-5">
+        {/* Left Side: Tables Floor Directory */}
+        <div className="lg:col-span-7 space-y-4">
           
-          {/* Table Management Card */}
-          <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="font-extrabold text-sm text-slate-900 dark:text-slate-100 uppercase tracking-wider flex items-center gap-2">
-                  <span>Dining Tables & Areas</span>
-                </h2>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                  Select a table to configure its QR standee, preview customer menu, or download codes.
-                </p>
+          {/* Controls Bar: Search & Status Filters */}
+          <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-3">
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
+              {/* Search */}
+              <div className="relative w-full sm:w-64">
+                <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+                <input
+                  type="text"
+                  placeholder="Filter tables by name or notes..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full pl-9 pr-7 py-1.5 text-xs bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-400"
+                />
+                {searchQuery && (
+                  <button
+                    onClick={() => setSearchQuery('')}
+                    className="absolute right-2.5 top-2 text-xs text-slate-400 hover:text-slate-600 cursor-pointer"
+                  >
+                    ✕
+                  </button>
+                )}
               </div>
-              <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
-                {tablesList.length} Tables
-              </span>
+
+              {/* Status Filter */}
+              <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-1 rounded-xl gap-1 shrink-0 self-start sm:self-auto">
+                <button
+                  type="button"
+                  onClick={() => setStatusFilter('all')}
+                  className={`px-2.5 py-1 text-[11px] font-bold rounded-lg transition-all cursor-pointer ${
+                    statusFilter === 'all'
+                      ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-amber-400 shadow-xs'
+                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+                  }`}
+                >
+                  All ({tables.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setStatusFilter('available')}
+                  className={`px-2.5 py-1 text-[11px] font-bold rounded-lg transition-all cursor-pointer flex items-center gap-1 ${
+                    statusFilter === 'available'
+                      ? 'bg-emerald-600 text-white shadow-xs'
+                      : 'text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40'
+                  }`}
+                >
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                  Free ({tables.length - occupiedCount})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setStatusFilter('occupied')}
+                  className={`px-2.5 py-1 text-[11px] font-bold rounded-lg transition-all cursor-pointer flex items-center gap-1 ${
+                    statusFilter === 'occupied'
+                      ? 'bg-amber-600 text-white shadow-xs'
+                      : 'text-amber-700 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/40'
+                  }`}
+                >
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
+                  Busy ({occupiedCount})
+                </button>
+              </div>
             </div>
 
-            {/* Table Selection Pills */}
-            <div className="flex flex-wrap gap-2 max-h-56 overflow-y-auto p-1 scrollbar-thin">
-              {tablesList.map((tbl) => {
-                const isSelected = selectedTable === tbl;
-                const activeOrder = getTableActiveOrder(tbl);
+            {/* Section Tabs */}
+            <div className="flex items-center gap-1.5 overflow-x-auto pt-2 border-t border-slate-100 dark:border-slate-800">
+              {availableSections.map((sec) => (
+                <button
+                  key={sec}
+                  type="button"
+                  onClick={() => setSelectedSection(sec)}
+                  className={`px-3 py-1 text-xs font-bold rounded-xl whitespace-nowrap transition-all cursor-pointer ${
+                    selectedSection === sec
+                      ? 'bg-slate-900 dark:bg-amber-400 text-amber-400 dark:text-slate-950 shadow-xs'
+                      : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700'
+                  }`}
+                >
+                  {sec}
+                </button>
+              ))}
+            </div>
+          </div>
 
-                return (
-                  <div
-                    key={tbl}
-                    className={`group relative flex items-center rounded-xl transition-all border ${
-                      isSelected
-                        ? 'bg-slate-900 dark:bg-amber-400 text-amber-400 dark:text-slate-950 border-slate-900 dark:border-amber-400 shadow-md ring-2 ring-amber-400/40'
-                        : 'bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700/80 border-slate-200 dark:border-slate-700'
-                    }`}
-                  >
-                    <button
-                      type="button"
-                      onClick={() => setSelectedTable(tbl)}
-                      className="px-3.5 py-2 text-xs font-black cursor-pointer flex items-center gap-1.5"
-                    >
-                      <span>{tbl}</span>
-                      {activeOrder && (
-                        <span className={`w-2 h-2 rounded-full ${isSelected ? 'bg-amber-400 dark:bg-slate-950 animate-ping' : 'bg-amber-500'}`} title="Has active pending order" />
-                      )}
-                    </button>
+          {/* Tables Cards Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 max-h-[620px] overflow-y-auto pr-1">
+            {filteredTables.map((tbl) => {
+              const isSelected = selectedTableName === tbl.name;
+              const activeOrder = getTableActiveOrder(tbl.name);
+              const isOccupied = Boolean(activeOrder);
 
-                    {/* Delete Custom Table button if more than 1 table */}
-                    {tablesList.length > 1 && (
+              return (
+                <div
+                  key={tbl.id}
+                  onClick={() => setSelectedTableName(tbl.name)}
+                  className={`bg-white dark:bg-slate-900 rounded-2xl border p-4 shadow-xs transition-all cursor-pointer flex flex-col justify-between group relative ${
+                    isSelected
+                      ? 'border-amber-400 dark:border-amber-400 ring-2 ring-amber-400/40 shadow-md bg-amber-50/20 dark:bg-amber-950/15'
+                      : isOccupied
+                      ? 'border-amber-300 dark:border-amber-700/60 hover:border-amber-400'
+                      : 'border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
+                  }`}
+                >
+                  <div>
+                    {/* Top Row: Name, Section & Status */}
+                    <div className="flex items-start justify-between gap-2 mb-2">
+                      <div>
+                        <div className="flex items-center gap-1.5">
+                          <h3 className="font-extrabold text-sm text-slate-900 dark:text-white group-hover:text-amber-600 dark:group-hover:text-amber-400 transition-colors">
+                            {tbl.name}
+                          </h3>
+                          {tbl.isActive === false && (
+                            <span className="text-[9px] px-1.5 py-0.2 bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400 rounded font-bold">
+                              Disabled
+                            </span>
+                          )}
+                        </div>
+                        <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 block mt-0.5">
+                          {tbl.section}
+                        </span>
+                      </div>
+
+                      {/* Status badge */}
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase flex items-center gap-1 ${
+                        isOccupied
+                          ? 'bg-amber-100 dark:bg-amber-950/80 text-amber-900 dark:text-amber-300 border border-amber-300 dark:border-amber-700/60'
+                          : 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/60'
+                      }`}>
+                        <span className={`w-1.5 h-1.5 rounded-full ${isOccupied ? 'bg-amber-500 animate-pulse' : 'bg-emerald-500'}`} />
+                        <span>{isOccupied ? 'Occupied' : 'Free'}</span>
+                      </span>
+                    </div>
+
+                    {/* Capacity & Shape Details */}
+                    <div className="flex items-center gap-2 text-xs font-bold text-slate-600 dark:text-slate-400 mb-2">
+                      <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-md">
+                        <Users className="w-3.5 h-3.5 text-slate-500" />
+                        <span>{tbl.capacity} Seats</span>
+                      </div>
+
+                      <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-md capitalize">
+                        {tbl.shape === 'round' ? <Circle className="w-3 h-3" /> :
+                         tbl.shape === 'rectangle' ? <RectangleHorizontal className="w-3 h-3" /> :
+                         <Square className="w-3 h-3" />}
+                        <span className="text-[11px]">{tbl.shape || 'Square'}</span>
+                      </div>
+                    </div>
+
+                    {/* Notes */}
+                    {tbl.notes && (
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400 line-clamp-1 italic mb-2">
+                        &ldquo;{tbl.notes}&rdquo;
+                      </p>
+                    )}
+
+                    {/* Live Order Card */}
+                    {activeOrder && (
+                      <div className="p-2.5 rounded-xl bg-amber-100/80 dark:bg-amber-950/60 border border-amber-300 dark:border-amber-800 text-xs mb-2">
+                        <div className="flex justify-between items-center font-bold text-amber-950 dark:text-amber-200">
+                          <span>Order #{activeOrder.invoiceNumber}</span>
+                          <span className="font-mono font-black">{formatCurrency(activeOrder.total, profile.currencySymbol)}</span>
+                        </div>
+                        <p className="text-[10px] text-amber-800 dark:text-amber-300 mt-0.5">
+                          {activeOrder.customerName ? `${activeOrder.customerName} • ` : ''}{activeOrder.items?.length || 0} items
+                        </p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Actions Footer */}
+                  <div className="pt-2.5 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-1 mt-1">
+                    <div className="flex items-center gap-1">
                       <button
                         type="button"
                         onClick={(e) => {
                           e.stopPropagation();
-                          handleDeleteTable(tbl);
+                          setEditingTable(tbl);
+                          setIsEditorOpen(true);
                         }}
-                        title={`Remove ${tbl}`}
-                        className={`pr-2 pl-1 py-2 text-slate-400 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100 cursor-pointer ${
-                          isSelected ? 'text-slate-400 hover:text-red-400' : ''
-                        }`}
+                        title="Edit Table"
+                        className="p-1.5 text-slate-400 hover:text-slate-800 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors cursor-pointer"
                       >
-                        <Trash2 className="w-3 h-3" />
+                        <Edit3 className="w-3.5 h-3.5" />
                       </button>
-                    )}
+
+                      {tables.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setTableToDelete(tbl);
+                          }}
+                          title="Delete Table"
+                          className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/40 rounded-lg transition-colors cursor-pointer"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
+
+                    <div className="flex items-center gap-1.5">
+                      {onOpenPOSWithTable && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onOpenPOSWithTable(tbl.name);
+                          }}
+                          className="px-2.5 py-1 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 rounded-lg text-[11px] font-bold transition-all flex items-center gap-1 cursor-pointer"
+                        >
+                          <span>Open in POS</span>
+                        </button>
+                      )}
+
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onOpenCustomerView(tbl.name);
+                        }}
+                        className="px-2.5 py-1 bg-slate-900 dark:bg-amber-400 hover:bg-slate-800 dark:hover:bg-amber-300 text-white dark:text-slate-950 rounded-lg text-[11px] font-bold transition-all flex items-center gap-1 cursor-pointer shadow-2xs"
+                      >
+                        <Smartphone className="w-3 h-3" />
+                        <span>View</span>
+                      </button>
+                    </div>
                   </div>
-                );
-              })}
-            </div>
-
-            {/* Add Custom Table Form */}
-            <form onSubmit={handleAddTable} className="flex gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
-              <input
-                type="text"
-                placeholder="Add custom table (e.g. VIP Booth 1, Rooftop 4, Garden 2)..."
-                value={newTableName}
-                onChange={(e) => setNewTableName(e.target.value)}
-                className="flex-1 px-3.5 py-2 text-xs bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 rounded-xl focus:bg-white dark:focus:bg-slate-900 focus:ring-2 focus:ring-amber-400/50 focus:outline-none"
-              />
-              <button
-                type="submit"
-                className="px-4 py-2 bg-slate-900 dark:bg-amber-400 hover:bg-slate-800 dark:hover:bg-amber-300 text-white dark:text-slate-950 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer shrink-0 shadow-xs"
-              >
-                <Plus className="w-3.5 h-3.5" /> Add Table
-              </button>
-            </form>
+                </div>
+              );
+            })}
           </div>
+        </div>
 
-          {/* Standee Customization & Guest Wi-Fi */}
+        {/* Right Side: Standee Preview & QR Generator for Selected Table */}
+        <div className="lg:col-span-5 space-y-4">
+          
+          {/* Standee Configuration Settings */}
           <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <div className="p-1.5 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400">
+                <div className="p-1.5 rounded-lg bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400">
                   <Wifi className="w-4 h-4" />
                 </div>
-                <h3 className="font-extrabold text-sm text-slate-900 dark:text-slate-100 uppercase tracking-wider">
-                  Guest Wi-Fi Details on Standee
+                <h3 className="font-extrabold text-xs text-slate-900 dark:text-slate-100 uppercase tracking-wider">
+                  Guest Wi-Fi on Table Standee
                 </h3>
               </div>
-              <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-slate-700 dark:text-slate-300">
+              <label className="flex items-center gap-1.5 cursor-pointer text-xs font-bold text-slate-700 dark:text-slate-300">
                 <input
                   type="checkbox"
                   checked={showWifiOnStandee}
                   onChange={(e) => setShowWifiOnStandee(e.target.checked)}
                   className="rounded border-slate-300 dark:border-slate-700 text-amber-500 focus:ring-amber-400"
                 />
-                <span>Include on Standee</span>
+                <span>Include on QR</span>
               </label>
             </div>
 
             {showWifiOnStandee && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+              <div className="grid grid-cols-2 gap-2.5 pt-1">
                 <div>
                   <label className="text-[11px] font-bold text-slate-600 dark:text-slate-400 block mb-1">
-                    Wi-Fi Network Name (SSID)
+                    Wi-Fi Name (SSID)
                   </label>
                   <input
                     type="text"
                     value={wifiSsid}
                     onChange={(e) => setWifiSsid(e.target.value)}
                     placeholder="e.g. Cafe_Guest_5G"
-                    className="w-full px-3 py-2 text-xs bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 rounded-xl focus:outline-none focus:ring-1 focus:ring-amber-400"
+                    className="w-full px-3 py-1.5 text-xs bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 rounded-xl focus:outline-none focus:ring-1 focus:ring-amber-400"
                   />
                 </div>
                 <div>
                   <label className="text-[11px] font-bold text-slate-600 dark:text-slate-400 block mb-1">
-                    Wi-Fi Password
+                    Password
                   </label>
                   <input
                     type="text"
                     value={wifiPassword}
                     onChange={(e) => setWifiPassword(e.target.value)}
-                    placeholder="e.g. DineIn123"
-                    className="w-full px-3 py-2 text-xs bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 rounded-xl focus:outline-none focus:ring-1 focus:ring-amber-400"
+                    placeholder="Password"
+                    className="w-full px-3 py-1.5 text-xs bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 rounded-xl focus:outline-none focus:ring-1 focus:ring-amber-400"
                   />
                 </div>
               </div>
             )}
-
-            {/* Standee Theme Style Selection */}
-            <div className="pt-3 border-t border-slate-100 dark:border-slate-800">
-              <label className="text-[11px] font-extrabold uppercase text-slate-500 dark:text-slate-400 block mb-2">
-                Standee Visual Style
-              </label>
-              <div className="grid grid-cols-3 gap-2">
-                <button
-                  type="button"
-                  onClick={() => setStandeeTheme('classic')}
-                  className={`p-2.5 rounded-xl border text-xs font-bold transition-all cursor-pointer text-center ${
-                    standeeTheme === 'classic'
-                      ? 'border-amber-500 bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 ring-1 ring-amber-400'
-                      : 'border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400'
-                  }`}
-                >
-                  Classic Restaurant
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setStandeeTheme('minimal')}
-                  className={`p-2.5 rounded-xl border text-xs font-bold transition-all cursor-pointer text-center ${
-                    standeeTheme === 'minimal'
-                      ? 'border-amber-500 bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 ring-1 ring-amber-400'
-                      : 'border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400'
-                  }`}
-                >
-                  Modern Minimal
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setStandeeTheme('dark')}
-                  className={`p-2.5 rounded-xl border text-xs font-bold transition-all cursor-pointer text-center ${
-                    standeeTheme === 'dark'
-                      ? 'border-amber-500 bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 ring-1 ring-amber-400'
-                      : 'border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400'
-                  }`}
-                >
-                  Luxury Dark Card
-                </button>
-              </div>
-            </div>
           </div>
 
-          {/* Instant Staff Alert Live Testing Card */}
-          <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className="p-1.5 rounded-lg bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400">
-                  <BellRing className="w-4 h-4 animate-bounce" />
-                </div>
-                <div>
-                  <h3 className="font-extrabold text-sm text-slate-900 dark:text-slate-100 uppercase tracking-wider">
-                    Instant Staff Alert Dispatcher
-                  </h3>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">
-                    Test real-time buzzer & chime notifications for <span className="font-bold text-amber-600 dark:text-amber-400">{selectedTable}</span> across POS, KDS, & mobile
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1">
-              <button
-                type="button"
-                onClick={() => onServiceRequest && onServiceRequest(selectedTable, 'waiter', 'Assistance needed')}
-                className="p-2.5 bg-amber-50 dark:bg-amber-950/40 hover:bg-amber-100 dark:hover:bg-amber-900/60 border border-amber-300 dark:border-amber-700/60 rounded-xl text-xs font-bold text-amber-900 dark:text-amber-200 flex flex-col items-center gap-1.5 cursor-pointer transition-all hover:scale-[1.02] shadow-2xs"
-              >
-                <BellRing className="w-4 h-4 text-amber-600 dark:text-amber-400" />
-                <span>Call Waiter</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => onServiceRequest && onServiceRequest(selectedTable, 'drink', 'Water refill / drinks')}
-                className="p-2.5 bg-blue-50 dark:bg-blue-950/40 hover:bg-blue-100 dark:hover:bg-blue-900/60 border border-blue-300 dark:border-blue-700/60 rounded-xl text-xs font-bold text-blue-900 dark:text-blue-200 flex flex-col items-center gap-1.5 cursor-pointer transition-all hover:scale-[1.02] shadow-2xs"
-              >
-                <Wine className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-                <span>Water / Drinks</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => onServiceRequest && onServiceRequest(selectedTable, 'bill', 'Bill & payment terminal')}
-                className="p-2.5 bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 border border-emerald-300 dark:border-emerald-700/60 rounded-xl text-xs font-bold text-emerald-900 dark:text-emerald-200 flex flex-col items-center gap-1.5 cursor-pointer transition-all hover:scale-[1.02] shadow-2xs"
-              >
-                <Receipt className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-                <span>Request Bill</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => onServiceRequest && onServiceRequest(selectedTable, 'cutlery', 'Extra napkins & cutlery')}
-                className="p-2.5 bg-purple-50 dark:bg-purple-950/40 hover:bg-purple-100 dark:hover:bg-purple-900/60 border border-purple-300 dark:border-purple-700/60 rounded-xl text-xs font-bold text-purple-900 dark:text-purple-200 flex flex-col items-center gap-1.5 cursor-pointer transition-all hover:scale-[1.02] shadow-2xs"
-              >
-                <Utensils className="w-4 h-4 text-purple-600 dark:text-purple-400" />
-                <span>Cutlery & Napkins</span>
-              </button>
-            </div>
-          </div>
-
-          {/* Direct Link & Integration Info */}
-          <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-3">
-            <div className="flex items-center justify-between">
-              <span className="font-extrabold text-xs text-slate-900 dark:text-slate-100 uppercase tracking-wider">
-                Direct Web Ordering Link
-              </span>
-              <span className="text-[11px] text-slate-500 dark:text-slate-400 font-mono">
-                {selectedTable}
-              </span>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <input
-                type="text"
-                readOnly
-                value={currentTableUrl}
-                className="flex-1 px-3 py-2 text-xs bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 rounded-xl font-mono truncate"
-              />
-              <button
-                type="button"
-                onClick={handleCopyLink}
-                className="px-3.5 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shrink-0 border border-slate-200 dark:border-slate-700"
-              >
-                {copied ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
-                <span>{copied ? 'Copied' : 'Copy'}</span>
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* Right Side: Live Table Standee Preview & Print/Export Actions */}
-        <div className="lg:col-span-5 space-y-4">
-          <div className="bg-slate-950 p-6 rounded-3xl border border-slate-800 shadow-xl flex flex-col items-center justify-center text-center relative overflow-hidden">
+          {/* Standee Preview Card */}
+          <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs flex flex-col items-center space-y-4">
             
-            {/* Ambient Background Glow */}
-            <div className="absolute top-0 right-0 w-48 h-48 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
-            <div className="absolute bottom-0 left-0 w-48 h-48 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
-
-            {/* Standee Container */}
-            <div className={`w-full max-w-[280px] rounded-3xl p-5 border-2 shadow-2xl relative transition-all duration-300 ${
-              standeeTheme === 'dark'
-                ? 'bg-slate-900 border-amber-400/60 text-white'
-                : standeeTheme === 'minimal'
-                ? 'bg-white border-slate-300 text-slate-900'
-                : 'bg-white border-slate-950 text-slate-900'
-            }`}>
-              
-              {/* Standee Brand Header */}
-              <div className="space-y-1 mb-3">
-                <div className="w-7 h-7 mx-auto rounded-lg bg-amber-400 text-slate-950 flex items-center justify-center font-black shadow-xs mb-1">
-                  <Utensils className="w-4 h-4" />
-                </div>
-                <h4 className={`font-black text-sm uppercase tracking-wider truncate ${
-                  standeeTheme === 'dark' ? 'text-white' : 'text-slate-950'
-                }`}>
-                  {profile.name}
-                </h4>
-                <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium truncate">
-                  {profile.tagline || 'Contactless Table Ordering'}
-                </p>
+            {/* Standee Physical Card */}
+            <div className="w-full max-w-xs bg-white border-2 border-slate-900 rounded-3xl p-5 text-center shadow-xl space-y-3 relative text-slate-900">
+              <div className="absolute top-3 right-3 text-[10px] font-black uppercase text-amber-700 bg-amber-100 px-2 py-0.5 rounded-full border border-amber-300">
+                Standee
               </div>
 
-              {/* Table Number Pill */}
-              <div className="inline-block px-4 py-1 rounded-xl bg-slate-950 text-amber-400 font-black text-xs uppercase tracking-widest shadow-xs mb-3 border border-amber-400/30">
-                {selectedTable}
+              <div>
+                <h3 className="font-black text-slate-900 text-sm uppercase tracking-wide line-clamp-1">{profile.name}</h3>
+                <p className="text-[10px] text-slate-500">{profile.tagline || 'Contactless Table Ordering'}</p>
               </div>
 
-              {/* QR Code Container */}
-              <div className={`p-3 rounded-2xl inline-block shadow-inner mb-3 border ${
-                standeeTheme === 'dark'
-                  ? 'bg-slate-950 border-slate-800'
-                  : 'bg-slate-50 border-slate-200'
-              }`}>
+              <div>
+                <span className="inline-block px-4 py-1 bg-slate-900 text-amber-400 font-black text-sm rounded-xl shadow-xs">
+                  {selectedTableName}
+                </span>
+                <span className="text-[10px] text-slate-500 font-bold block mt-0.5">
+                  {currentTableObj?.section || 'Main Dining'} • {currentTableObj?.capacity || 4} Seats
+                </span>
+              </div>
+
+              {/* QR Image Box */}
+              <div className="bg-slate-50 border border-dashed border-slate-300 p-2.5 rounded-2xl inline-block">
                 {qrDataUrl ? (
-                  <img 
-                    src={qrDataUrl} 
-                    alt={`QR for ${selectedTable}`} 
-                    className="w-44 h-44 object-contain rounded-lg mx-auto"
+                  <img
+                    src={qrDataUrl}
+                    alt={`QR Code for ${selectedTableName}`}
+                    className="w-40 h-40 object-contain mx-auto"
                   />
                 ) : (
-                  <div className="w-44 h-44 flex items-center justify-center text-slate-400">
-                    <QrCode className="w-10 h-10 animate-spin" />
+                  <div className="w-40 h-40 flex items-center justify-center text-slate-400">
+                    Generating...
                   </div>
                 )}
               </div>
 
-              {/* Instructions */}
-              <div className="space-y-0.5 mb-3">
-                <p className={`text-xs font-black flex items-center justify-center gap-1.5 ${
-                  standeeTheme === 'dark' ? 'text-amber-400' : 'text-slate-950'
-                }`}>
-                  <span>📲 Scan with Camera to Order</span>
-                </p>
-                <p className="text-[10px] text-slate-500 dark:text-slate-400">
-                  Instant digital menu & live bill tracking
-                </p>
+              <div>
+                <p className="font-extrabold text-xs text-slate-900">📲 Scan with Camera to Order</p>
+                <p className="text-[10px] text-slate-500">Live menu, food orders & instant bill tracking</p>
               </div>
 
-              {/* Wi-Fi Footnote */}
               {showWifiOnStandee && wifiSsid && (
-                <div className={`p-2 rounded-xl text-[10px] text-left border ${
-                  standeeTheme === 'dark'
-                    ? 'bg-slate-950/80 border-slate-800 text-slate-300'
-                    : 'bg-slate-100 border-slate-200 text-slate-700'
-                }`}>
-                  <div className="flex items-center justify-between">
-                    <span className="font-bold text-slate-500">Free Wi-Fi:</span>
-                    <span className="font-mono font-bold truncate max-w-[130px]">{wifiSsid}</span>
+                <div className="bg-slate-100 rounded-xl p-2 text-[10px] text-slate-700 text-left font-mono space-y-0.5">
+                  <div className="flex justify-between">
+                    <span className="text-slate-500 font-sans">Wi-Fi:</span>
+                    <span className="font-bold text-slate-900">{wifiSsid}</span>
                   </div>
                   {wifiPassword && (
-                    <div className="flex items-center justify-between mt-0.5">
-                      <span className="font-bold text-slate-500">Password:</span>
-                      <span className="font-mono font-bold">{wifiPassword}</span>
+                    <div className="flex justify-between">
+                      <span className="text-slate-500 font-sans">Pass:</span>
+                      <span className="font-bold text-slate-900">{wifiPassword}</span>
                     </div>
                   )}
                 </div>
               )}
             </div>
 
-            {/* Print & Download Action Controls */}
-            <div className="w-full max-w-[280px] grid grid-cols-2 gap-2 mt-4">
-              <button
-                type="button"
-                onClick={handlePrintSingleStandee}
-                className="w-full py-2.5 bg-amber-400 hover:bg-amber-300 text-slate-950 font-black rounded-xl text-xs transition-all shadow-md flex items-center justify-center gap-1.5 cursor-pointer"
-              >
-                <Printer className="w-3.5 h-3.5" />
-                <span>Print Standee</span>
-              </button>
+            {/* Standee Action Buttons */}
+            <div className="w-full max-w-xs space-y-2">
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={handlePrintSingleStandee}
+                  className="py-2.5 px-3 bg-slate-900 dark:bg-amber-400 hover:bg-slate-800 dark:hover:bg-amber-300 text-white dark:text-slate-950 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 shadow-sm cursor-pointer"
+                >
+                  <Printer className="w-3.5 h-3.5 text-amber-400 dark:text-slate-950" />
+                  <span>Print Standee</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleDownloadQr}
+                  className="py-2.5 px-3 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 shadow-2xs cursor-pointer"
+                >
+                  <Download className="w-3.5 h-3.5 text-slate-600 dark:text-slate-400" />
+                  <span>Save QR PNG</span>
+                </button>
+              </div>
+
+              {/* Copy Direct URL */}
+              <div className="flex items-center gap-2 pt-1">
+                <input
+                  type="text"
+                  readOnly
+                  value={currentTableUrl}
+                  className="flex-1 px-3 py-2 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl font-mono text-[10px] text-slate-700 dark:text-slate-300 select-all"
+                />
+                <button
+                  type="button"
+                  onClick={handleCopyLink}
+                  className="px-3 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200 rounded-xl text-xs font-bold transition-all flex items-center gap-1 cursor-pointer shrink-0 shadow-2xs"
+                >
+                  {copied ? <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                  <span>{copied ? 'Copied' : 'Copy'}</span>
+                </button>
+              </div>
 
               <button
                 type="button"
-                onClick={handleDownloadQr}
-                className="w-full py-2.5 bg-slate-800 hover:bg-slate-700 text-white font-bold rounded-xl text-xs transition-all border border-slate-700 flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
+                onClick={() => onOpenCustomerView(selectedTableName)}
+                className="w-full py-2.5 bg-gradient-to-r from-amber-500 to-amber-400 text-slate-950 font-black rounded-xl text-xs flex items-center justify-center gap-2 shadow-md cursor-pointer hover:brightness-105"
               >
-                <Download className="w-3.5 h-3.5 text-amber-400" />
-                <span>Save PNG</span>
+                <Smartphone className="w-4 h-4" />
+                <span>Test Live Order as Customer at {selectedTableName}</span>
               </button>
             </div>
           </div>
         </div>
       </div>
+
+      {/* Delete Confirmation Alert Modal */}
+      {tableToDelete && (
+        <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-xs animate-in fade-in duration-150">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl border border-red-200 dark:border-red-800/60 p-6 w-full max-w-md shadow-2xl text-center space-y-4">
+            <div className="w-12 h-12 rounded-2xl bg-red-100 dark:bg-red-950/60 text-red-600 dark:text-red-400 flex items-center justify-center mx-auto">
+              <AlertTriangle className="w-6 h-6" />
+            </div>
+            <div>
+              <h3 className="text-base font-black text-slate-900 dark:text-white">
+                Delete {tableToDelete.name}?
+              </h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                Are you sure you want to remove this table from the floor directory? This will remove its QR code entry.
+              </p>
+              {getTableActiveOrder(tableToDelete.name) && (
+                <div className="mt-3 p-3 bg-amber-50 dark:bg-amber-950/60 border border-amber-300 dark:border-amber-700/60 rounded-xl text-xs font-bold text-amber-900 dark:text-amber-200 text-left">
+                  ⚠️ Warning: {tableToDelete.name} currently has an active pending dine-in order.
+                </div>
+              )}
+            </div>
+            <div className="flex items-center justify-center gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setTableToDelete(null)}
+                className="px-4 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-bold transition-all cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleDeleteConfirm}
+                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-black transition-all cursor-pointer shadow-md"
+              >
+                Confirm Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Sub-modals */}
+      <TableEditorModal
+        isOpen={isEditorOpen}
+        onClose={() => {
+          setIsEditorOpen(false);
+          setEditingTable(null);
+        }}
+        tableToEdit={editingTable}
+        onSave={onSaveTable}
+        existingTables={tables}
+      />
+
+      <BatchAddTablesModal
+        isOpen={isBatchOpen}
+        onClose={() => setIsBatchOpen(false)}
+        existingTables={tables}
+        onBatchSave={onBatchAddTables}
+      />
     </div>
   );
 };

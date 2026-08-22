@@ -120,6 +120,36 @@
         "name": { "type": "string" }
       },
       "required": ["id", "name"]
+    },
+    "menu_tags": {
+      "title": "Menu Tag",
+      "description": "Dietary badges, tags, colors, and chef specials",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "color": { "type": "string" },
+        "description": { "type": "string" },
+        "icon": { "type": "string" },
+        "isCustom": { "type": "boolean" }
+      },
+      "required": ["id", "name", "color"]
+    },
+    "restaurant_tables": {
+      "title": "Restaurant Table",
+      "description": "Dining floor tables, sections, seating capacity, shapes, notes, and QR configurations",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "section": { "type": "string" },
+        "capacity": { "type": "number" },
+        "status": { "type": "string" },
+        "isActive": { "type": "boolean" },
+        "notes": { "type": "string" },
+        "shape": { "type": "string" }
+      },
+      "required": ["id", "name", "section", "capacity"]
     }
   },
   "firestore": {
@@ -163,6 +193,18 @@
       "/menu_categories/{catId}": {
         "schema": "#/entities/menu_categories",
         "description": "Menu category tags"
+      }
+    },
+    "menu_tags": {
+      "/menu_tags/{tagId}": {
+        "schema": "#/entities/menu_tags",
+        "description": "Dietary and chef custom badges"
+      }
+    },
+    "restaurant_tables": {
+      "/restaurant_tables/{tableId}": {
+        "schema": "#/entities/restaurant_tables",
+        "description": "Dining tables, sections, and seating floor arrangements"
       }
     }
   }

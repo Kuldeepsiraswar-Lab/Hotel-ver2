@@ -41,5 +41,10 @@ service cloud.firestore {
     match /menu_tags/{tagId} {
       allow read, write: if true;
     }
+
+    // Dining Tables & Floor QR Configurations
+    match /restaurant_tables/{tableId} {
+      allow read, write: if true;
+    }
   }
 }

@@ -85,10 +85,11 @@ export const ExpenseTracker: React.FC<ExpenseTrackerProps> = ({
 
   // Filtered Expenses
   const filteredExpenses = expenses.filter(exp => {
-    const matchesSearch = 
-      exp.vendorName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (exp.invoiceNumber && exp.invoiceNumber.toLowerCase().includes(searchQuery.toLowerCase())) ||
-      (exp.notes && exp.notes.toLowerCase().includes(searchQuery.toLowerCase()));
+    const q = (searchQuery || '').trim().toLowerCase();
+    const matchesSearch = !q ||
+      (exp.vendorName && exp.vendorName.toLowerCase().includes(q)) ||
+      (exp.invoiceNumber && exp.invoiceNumber.toLowerCase().includes(q)) ||
+      (exp.notes && exp.notes.toLowerCase().includes(q));
 
     const matchesCategory = selectedCategory === 'All' || exp.category === selectedCategory;
     const matchesStatus = selectedStatus === 'All' || exp.paymentStatus === selectedStatus;

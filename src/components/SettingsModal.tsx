@@ -287,10 +287,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   // Filtered staff list for search
   const filteredStaff = staffList.filter(s => {
     if (!staffSearchQuery.trim()) return true;
-    const q = staffSearchQuery.toLowerCase();
+    const q = staffSearchQuery.trim().toLowerCase();
     return (
-      s.displayName.toLowerCase().includes(q) ||
-      s.role.toLowerCase().includes(q) ||
+      (s.displayName && s.displayName.toLowerCase().includes(q)) ||
+      (s.role && s.role.toLowerCase().includes(q)) ||
       (s.email && s.email.toLowerCase().includes(q)) ||
       (s.employeeCode && s.employeeCode.toLowerCase().includes(q))
     );

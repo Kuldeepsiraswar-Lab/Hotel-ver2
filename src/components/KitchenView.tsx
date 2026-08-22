@@ -214,11 +214,11 @@ export const KitchenView: React.FC<KitchenViewProps> = ({
       // Search Query
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
-        const matchesTable = order.tableNumber?.toLowerCase().includes(q);
-        const matchesInvoice = order.invoiceNumber.toLowerCase().includes(q);
-        const matchesCustomer = order.customerName?.toLowerCase().includes(q);
-        const matchesItems = order.items.some(i => i.name.toLowerCase().includes(q));
-        const matchesReason = order.kitchenHoldReason?.toLowerCase().includes(q);
+        const matchesTable = !!order.tableNumber?.toLowerCase().includes(q);
+        const matchesInvoice = !!(order.invoiceNumber && order.invoiceNumber.toLowerCase().includes(q));
+        const matchesCustomer = !!order.customerName?.toLowerCase().includes(q);
+        const matchesItems = !!(order.items && Array.isArray(order.items) && order.items.some(i => i && i.name && i.name.toLowerCase().includes(q)));
+        const matchesReason = !!order.kitchenHoldReason?.toLowerCase().includes(q);
         if (!matchesTable && !matchesInvoice && !matchesCustomer && !matchesItems && !matchesReason) {
           return false;
         }

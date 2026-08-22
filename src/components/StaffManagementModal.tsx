@@ -355,10 +355,12 @@ export const StaffManagementModal: React.FC<StaffManagementModalProps> = ({
   };
 
   const filteredStaff = staffList.filter(staff => {
-    const matchesSearch = staff.displayName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (staff.email && staff.email.toLowerCase().includes(searchQuery.toLowerCase())) ||
+    const q = searchQuery.trim().toLowerCase();
+    const matchesSearch = !q ||
+      (staff.displayName && staff.displayName.toLowerCase().includes(q)) ||
+      (staff.email && staff.email.toLowerCase().includes(q)) ||
       (staff.phone && staff.phone.includes(searchQuery)) ||
-      (staff.employeeCode && staff.employeeCode.toLowerCase().includes(searchQuery.toLowerCase()));
+      (staff.employeeCode && staff.employeeCode.toLowerCase().includes(q));
     
     const matchesRole = selectedRoleFilter === 'all' || staff.role === selectedRoleFilter;
     return matchesSearch && matchesRole;

@@ -33,6 +33,27 @@ export type MenuCategory =
   | 'Beverages & Cocktails'
   | 'Catering Trays & Combos';
 
+export type TagColor = 
+  | 'amber' 
+  | 'emerald' 
+  | 'rose' 
+  | 'purple' 
+  | 'sky' 
+  | 'indigo' 
+  | 'orange' 
+  | 'teal' 
+  | 'red' 
+  | 'fuchsia'
+  | 'lime';
+
+export interface MenuTag {
+  id: string;
+  name: string;
+  color?: TagColor;
+  description?: string;
+  isSystem?: boolean;
+}
+
 export interface MenuItem {
   id: string;
   name: string;
@@ -47,6 +68,7 @@ export interface MenuItem {
   isAvailable: boolean;
   preparationTime?: number; // in mins
   imageUrl?: string;
+  tags?: string[];
 }
 
 export type KitchenStatus = 'pending' | 'preparing' | 'ready' | 'served' | 'completed' | 'cancelled';

@@ -381,8 +381,10 @@ export const TableQRView: React.FC<TableQRViewProps> = ({
 
   // Calculate table active orders
   const getTableActiveOrder = (tbl: string) => {
+    if (!tbl) return undefined;
+    const cleanTbl = tbl.trim().toLowerCase();
     return orders.find(o => 
-      o.tableNumber?.toLowerCase() === tbl.toLowerCase() && 
+      o.tableNumber && o.tableNumber.trim().toLowerCase() === cleanTbl && 
       o.paymentStatus === 'pending' && 
       !o.isArchived
     );

@@ -1,4 +1,4 @@
-import { MenuItem, RestaurantProfile, BillOrder, Expense, StaffUser } from '../types';
+import { MenuItem, RestaurantProfile, BillOrder, Expense, StaffUser, MenuTag } from '../types';
 
 export const defaultRestaurantProfile: RestaurantProfile = {
   name: "Bella Vista Bistro & Woodfire Kitchen",
@@ -29,6 +29,20 @@ export const defaultRestaurantProfile: RestaurantProfile = {
     routingOrIfsc: "HDFC0001234",
   },
 };
+
+export const defaultMenuTags: MenuTag[] = [
+  { id: 'tag-1', name: "Chef's Special", color: 'amber', description: 'Handcrafted signature recommendation by Executive Chef' },
+  { id: 'tag-2', name: 'Bestseller', color: 'rose', description: 'Top rated customer favorite dish' },
+  { id: 'tag-3', name: 'House Signature', color: 'indigo', description: 'Authentic culinary recipe exclusive to Bella Vista' },
+  { id: 'tag-4', name: 'Wood-Fired', color: 'orange', description: 'Freshly baked in 450°C Italian stone woodfire oven' },
+  { id: 'tag-5', name: 'Organic Produce', color: 'emerald', description: 'Farm-to-table certified pesticide-free organic ingredients' },
+  { id: 'tag-6', name: 'Keto-Friendly', color: 'sky', description: 'High protein, healthy fats, ultra low net carbohydrates' },
+  { id: 'tag-7', name: 'Seasonal Catch', color: 'teal', description: 'Daily fresh wild-caught marine selection' },
+  { id: 'tag-8', name: 'Nut-Free', color: 'purple', description: 'Prepared in dedicated allergen-safe nut-free kitchen zone' },
+  { id: 'tag-9', name: 'Halal', color: 'teal', description: '100% certified halal artisanal preparation' },
+  { id: 'tag-10', name: 'Quick Bite', color: 'fuchsia', description: 'Rapid table preparation under 10 minutes' },
+  { id: 'tag-11', name: 'Jain Option', color: 'lime', description: 'Prepared without onion, garlic, or root vegetables upon request' },
+];
 
 export const defaultStaffAccounts: StaffUser[] = [
   {
@@ -117,6 +131,7 @@ export const defaultMenuItems: MenuItem[] = [
     isVeg: true,
     isAvailable: true,
     preparationTime: 10,
+    tags: ["Chef's Special", "Organic Produce"],
   },
   {
     id: "menu-2",
@@ -128,6 +143,7 @@ export const defaultMenuItems: MenuItem[] = [
     imageUrl: "https://images.unsplash.com/photo-1599488615731-7e5c2823ff28?auto=format&fit=crop&w=600&q=80",
     isAvailable: true,
     preparationTime: 12,
+    tags: ["Seasonal Catch", "Quick Bite"],
   },
   {
     id: "menu-3",
@@ -140,6 +156,7 @@ export const defaultMenuItems: MenuItem[] = [
     isVeg: true,
     isAvailable: true,
     preparationTime: 8,
+    tags: ["Wood-Fired", "Bestseller"],
   },
   {
     id: "menu-4",
@@ -152,6 +169,7 @@ export const defaultMenuItems: MenuItem[] = [
     isVeg: true,
     isAvailable: true,
     preparationTime: 10,
+    tags: ["Chef's Special", "Nut-Free"],
   },
 
   // Artisan Pizzas
@@ -166,6 +184,7 @@ export const defaultMenuItems: MenuItem[] = [
     isVeg: true,
     isAvailable: true,
     preparationTime: 12,
+    tags: ["Wood-Fired", "Bestseller", "Organic Produce"],
   },
   {
     id: "menu-6",
@@ -178,6 +197,7 @@ export const defaultMenuItems: MenuItem[] = [
     isSpicy: true,
     isAvailable: true,
     preparationTime: 14,
+    tags: ["Wood-Fired", "Chef's Special"],
   },
   {
     id: "menu-7",
@@ -190,6 +210,7 @@ export const defaultMenuItems: MenuItem[] = [
     isVeg: true,
     isAvailable: true,
     preparationTime: 14,
+    tags: ["House Signature", "Wood-Fired"],
   },
   {
     id: "menu-8",
@@ -201,6 +222,7 @@ export const defaultMenuItems: MenuItem[] = [
     imageUrl: "https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?auto=format&fit=crop&w=600&q=80",
     isAvailable: true,
     preparationTime: 15,
+    tags: ["Wood-Fired", "Keto-Friendly"],
   },
 
   // Handcrafted Pastas
@@ -214,6 +236,7 @@ export const defaultMenuItems: MenuItem[] = [
     imageUrl: "https://images.unsplash.com/photo-1621996346565-e3d5d6281292?auto=format&fit=crop&w=600&q=80",
     isAvailable: true,
     preparationTime: 16,
+    tags: ["House Signature", "Bestseller"],
   },
   {
     id: "menu-10",
@@ -225,6 +248,7 @@ export const defaultMenuItems: MenuItem[] = [
     imageUrl: "https://images.unsplash.com/photo-1587740908075-9e245070dfaa?auto=format&fit=crop&w=600&q=80",
     isAvailable: true,
     preparationTime: 18,
+    tags: ["Chef's Special", "Seasonal Catch"],
   },
   {
     id: "menu-11",
@@ -236,6 +260,7 @@ export const defaultMenuItems: MenuItem[] = [
     imageUrl: "https://images.unsplash.com/photo-1608897013039-887f21d8c804?auto=format&fit=crop&w=600&q=80",
     isAvailable: true,
     preparationTime: 15,
+    tags: ["Halal", "Nut-Free"],
   },
   {
     id: "menu-12",
@@ -248,6 +273,7 @@ export const defaultMenuItems: MenuItem[] = [
     isVeg: true,
     isAvailable: true,
     preparationTime: 12,
+    tags: ["House Signature", "Jain Option"],
   },
 
   // Main Courses
@@ -262,6 +288,7 @@ export const defaultMenuItems: MenuItem[] = [
     isGlutenFree: true,
     isAvailable: true,
     preparationTime: 20,
+    tags: ["Chef's Special", "Keto-Friendly"],
   },
   {
     id: "menu-14",
@@ -274,6 +301,7 @@ export const defaultMenuItems: MenuItem[] = [
     isGlutenFree: true,
     isAvailable: true,
     preparationTime: 18,
+    tags: ["Seasonal Catch", "Keto-Friendly"],
   },
   {
     id: "menu-15",

@@ -36,5 +36,10 @@ service cloud.firestore {
     match /menu_categories/{catId} {
       allow read, write: if true;
     }
+
+    // Menu Tags & Culinary Badges
+    match /menu_tags/{tagId} {
+      allow read, write: if true;
+    }
   }
 }

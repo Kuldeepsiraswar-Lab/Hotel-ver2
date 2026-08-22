@@ -7,7 +7,9 @@ import {
   Expense, 
   PaymentStatus,
   AppNotification,
-  StaffUser
+  StaffUser,
+  MenuTag,
+  TagColor
 } from './types';
 import { 
   defaultRestaurantProfile, 
@@ -15,7 +17,8 @@ import {
   defaultBillOrders, 
   defaultExpenses,
   defaultMenuCategories,
-  defaultStaffAccounts
+  defaultStaffAccounts,
+  defaultMenuTags
 } from './data/defaultData';
 import { Navbar, NavTab } from './components/Navbar';
 import { Sidebar } from './components/Sidebar';
@@ -63,6 +66,7 @@ const STORAGE_KEYS = {
   ORDERS: 'ristorante_orders_v1',
   EXPENSES: 'ristorante_expenses_v1',
   CATEGORIES: 'ristorante_categories_v1',
+  TAGS: 'ristorante_tags_v1',
   NOTIFICATIONS: 'ristorante_notifications_v1',
   CURRENT_USER: 'ristorante_staff_user_v1',
   STAFF: 'ristorante_staff_roster_v1',
@@ -140,6 +144,9 @@ export default function App() {
 
   // Menu Categories State (Online Cloud First)
   const [categories, setCategories] = useState<string[]>([]);
+
+  // Menu & Recipe Tags State (Online Cloud First)
+  const [tags, setTags] = useState<MenuTag[]>(defaultMenuTags);
 
   // Notifications State (Table QR Orders, live alerts)
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
@@ -232,6 +239,10 @@ export default function App() {
   }, [categories]);
 
   useEffect(() => {
+    localStorage.setItem(STORAGE_KEYS.TAGS, JSON.stringify(tags));
+  }, [tags]);
+
+  useEffect(() => {
     localStorage.setItem(STORAGE_KEYS.NOTIFICATIONS, JSON.stringify(notifications));
   }, [notifications]);
 
@@ -291,6 +302,7 @@ export default function App() {
     let unsubOrders: (() => void) | undefined;
     let unsubExpenses: (() => void) | undefined;
     let unsubCategories: (() => void) | undefined;
+    let unsubTags: (() => void) | undefined;
     let unsubStaff: (() => void) | undefined;
     let unsubNotifications: (() => void) | undefined;
 
@@ -313,6 +325,16 @@ export default function App() {
           } else {
             // Seed initial staff roster accounts to cloud if empty so admin can log in
             defaultStaffAccounts.forEach(s => CloudDatabaseService.saveStaffMember(s));
+          }
+        });
+
+        unsubTags = CloudDatabaseService.subscribeTags((cloudTags) => {
+          if (cloudTags && cloudTags.length > 0) {
+            setTags(cloudTags);
+          } else {
+            // Seed initial tags to cloud if empty
+            setTags(defaultMenuTags);
+            CloudDatabaseService.saveTags(defaultMenuTags);
           }
         });
 
@@ -380,6 +402,7 @@ export default function App() {
       if (unsubOrders) unsubOrders();
       if (unsubExpenses) unsubExpenses();
       if (unsubCategories) unsubCategories();
+      if (unsubTags) unsubTags();
       if (unsubStaff) unsubStaff();
       if (unsubNotifications) unsubNotifications();
     };
@@ -403,6 +426,7 @@ export default function App() {
         orders,
         expenses,
         categories,
+        tags,
         staff: staffList
       });
       setIsCloudSyncing(false);
@@ -425,6 +449,7 @@ export default function App() {
         orders: defaultBillOrders,
         expenses: defaultExpenses,
         categories: defaultMenuCategories,
+        tags: defaultMenuTags,
         staff: defaultStaffAccounts,
       });
       setIsCloudSyncing(false);
@@ -446,6 +471,7 @@ export default function App() {
       setOrders([]);
       setExpenses([]);
       setCategories([]);
+      setTags([]);
       setNotifications([]);
       knownOrderIdsRef.current = new Set();
       setIsCloudSyncing(false);
@@ -743,7 +769,7 @@ export default function App() {
     CloudDatabaseService.saveMenuItem(item);
 
     // Auto add category if it's new
-    if (item.category && !categories.some(c => c.toLowerCase() === item.category.toLowerCase())) {
+    if (item.category && typeof item.category === 'string' && !categories.some(c => c && c.toLowerCase() === item.category.toLowerCase())) {
       const newCats = [...categories, item.category];
       setCategories(newCats);
       CloudDatabaseService.saveCategories(newCats);
@@ -760,7 +786,7 @@ export default function App() {
   const handleAddCategory = (newCat: string) => {
     const trimmed = newCat.trim();
     if (!trimmed) return;
-    if (!categories.some(c => c.toLowerCase() === trimmed.toLowerCase())) {
+    if (!categories.some(c => c && c.toLowerCase() === trimmed.toLowerCase())) {
       const updated = [...categories, trimmed];
       setCategories(updated);
       CloudDatabaseService.saveCategories(updated);
@@ -803,6 +829,69 @@ export default function App() {
     setMenuItems(updatedItems);
   };
 
+  // Menu & Recipe Tag Handlers
+  const handleAddTag = (newTag: MenuTag) => {
+    if (!newTag || !newTag.name) return;
+    const exists = tags.some(t => t && t.name && t.name.toLowerCase() === newTag.name.toLowerCase());
+    if (!exists) {
+      const updated = [...tags, newTag];
+      setTags(updated);
+      CloudDatabaseService.saveTags(updated);
+      showCloudToast(`Tag created: "${newTag.name}"`);
+    }
+  };
+
+  const handleEditTag = (tagId: string, newName: string, newColor?: TagColor, newDescription?: string) => {
+    const targetTag = tags.find(t => t.id === tagId);
+    const oldName = targetTag ? targetTag.name : '';
+
+    const updatedTags = tags.map(t => t.id === tagId ? {
+      ...t,
+      name: newName.trim(),
+      color: newColor || t.color,
+      description: newDescription !== undefined ? newDescription.trim() : t.description
+    } : t);
+    setTags(updatedTags);
+    CloudDatabaseService.saveTags(updatedTags);
+
+    // If tag name changed, update all dishes that use this tag
+    if (oldName && newName && oldName.toLowerCase() !== newName.trim().toLowerCase()) {
+      const updatedItems = menuItems.map(item => {
+        if (item.tags && Array.isArray(item.tags) && item.tags.some(t => t && t.toLowerCase() === oldName.toLowerCase())) {
+          const newDishTags = item.tags.map(t => (t && t.toLowerCase() === oldName.toLowerCase()) ? newName.trim() : t);
+          const updatedDish = { ...item, tags: newDishTags };
+          CloudDatabaseService.saveMenuItem(updatedDish);
+          return updatedDish;
+        }
+        return item;
+      });
+      setMenuItems(updatedItems);
+    }
+    showCloudToast(`Tag updated: "${newName.trim()}"`);
+  };
+
+  const handleDeleteTag = (tagId: string, tagName: string) => {
+    const updatedTags = tags.filter(t => t.id !== tagId);
+    setTags(updatedTags);
+    CloudDatabaseService.saveTags(updatedTags);
+
+    // Cascade delete tag from all menuItems
+    if (tagName) {
+      const cleanTagName = tagName.toLowerCase();
+      const updatedItems = menuItems.map(item => {
+        if (item.tags && Array.isArray(item.tags) && item.tags.some(t => t && t.toLowerCase() === cleanTagName)) {
+          const newDishTags = item.tags.filter(t => t && t.toLowerCase() !== cleanTagName);
+          const updatedDish = { ...item, tags: newDishTags };
+          CloudDatabaseService.saveMenuItem(updatedDish);
+          return updatedDish;
+        }
+        return item;
+      });
+      setMenuItems(updatedItems);
+    }
+    showCloudToast(`Tag deleted: "${tagName}"`);
+  };
+
   // Profile Handlers
   const handleSaveProfile = (newProfile: RestaurantProfile) => {
     setProfile(newProfile);
@@ -816,11 +905,13 @@ export default function App() {
     setOrders(defaultBillOrders);
     setExpenses(defaultExpenses);
     setCategories(defaultMenuCategories);
+    setTags(defaultMenuTags);
     localStorage.removeItem(STORAGE_KEYS.PROFILE);
     localStorage.removeItem(STORAGE_KEYS.MENU);
     localStorage.removeItem(STORAGE_KEYS.ORDERS);
     localStorage.removeItem(STORAGE_KEYS.EXPENSES);
     localStorage.removeItem(STORAGE_KEYS.CATEGORIES);
+    localStorage.removeItem(STORAGE_KEYS.TAGS);
 
     // Also push fresh default dataset to Google Cloud
     try {
@@ -830,7 +921,8 @@ export default function App() {
         menuItems: defaultMenuItems,
         orders: defaultBillOrders,
         expenses: defaultExpenses,
-        categories: defaultMenuCategories
+        categories: defaultMenuCategories,
+        tags: defaultMenuTags
       });
       setIsCloudSyncing(false);
       showCloudToast("Reset database to sample dataset in Google Cloud!");
@@ -844,6 +936,7 @@ export default function App() {
     const data = {
       profile,
       categories,
+      tags,
       menuItems,
       orders,
       expenses,
@@ -863,6 +956,7 @@ export default function App() {
   const handleImportData = async (data: any) => {
     if (data.profile) setProfile(data.profile);
     if (data.categories && Array.isArray(data.categories)) setCategories(data.categories);
+    if (data.tags && Array.isArray(data.tags)) setTags(data.tags);
     if (data.menuItems) setMenuItems(data.menuItems);
     if (data.orders) setOrders(data.orders);
     if (data.expenses) setExpenses(data.expenses);
@@ -876,6 +970,7 @@ export default function App() {
         orders: data.orders || orders,
         expenses: data.expenses || expenses,
         categories: data.categories || categories,
+        tags: data.tags || tags,
       });
       setIsCloudSyncing(false);
       showCloudToast("Restored backup and synced directly to Google Cloud Firestore!");
@@ -900,6 +995,7 @@ export default function App() {
         tableNumber={customerTableMode}
         menuItems={menuItems}
         categories={categories}
+        tags={tags}
         profile={profile}
         existingOrders={orders}
         onPlaceOrder={(order) => {
@@ -1119,15 +1215,11 @@ export default function App() {
                   existingOrders={orders}
                   profile={profile}
                   categories={categories}
+                  tags={tags}
                   currentUser={currentUser}
                   onSaveOrder={handleSaveOrder}
                   onViewInvoice={(order) => setViewingInvoice(order)}
                   onOpenTableQR={handleOpenTableQR}
-                  onCloseTerminal={handleCloseTerminal}
-                  onOpenDailySummary={() => {
-                    setIsCloseoutTrigger(false);
-                    setIsDailySummaryOpen(true);
-                  }}
                 />
               )}
 
@@ -1178,6 +1270,7 @@ export default function App() {
                 <MenuManager
                   menuItems={menuItems}
                   categories={categories}
+                  tags={tags}
                   profile={profile}
                   currentUser={currentUser}
                   onSaveMenuItem={handleSaveMenuItem}
@@ -1185,6 +1278,9 @@ export default function App() {
                   onAddCategory={handleAddCategory}
                   onDeleteCategory={handleDeleteCategory}
                   onRenameCategory={handleRenameCategory}
+                  onAddTag={handleAddTag}
+                  onEditTag={handleEditTag}
+                  onDeleteTag={handleDeleteTag}
                 />
               )}
 

@@ -35,14 +35,16 @@ import {
   Coins
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
-import { MenuItem, OrderItem, BillOrder, RestaurantProfile, PaymentMethod, KitchenStatus } from '../types';
+import { MenuItem, OrderItem, BillOrder, RestaurantProfile, PaymentMethod, KitchenStatus, MenuTag } from '../types';
 import { formatCurrency, generateId, generateNextReceiptNumber } from '../utils/formatters';
 import { playOrderChimeSound, playKitchenBell } from '../utils/sound';
+import { getTagStyle } from '../utils/tagUtils';
 
 interface CustomerTableOrderingProps {
   tableNumber: string;
   menuItems: MenuItem[];
   categories: string[];
+  tags?: MenuTag[];
   profile: RestaurantProfile;
   existingOrders: BillOrder[];
   onPlaceOrder: (order: BillOrder) => void;
@@ -57,6 +59,7 @@ export const CustomerTableOrdering: React.FC<CustomerTableOrderingProps> = ({
   tableNumber,
   menuItems,
   categories: passedCategories,
+  tags = [],
   profile,
   existingOrders,
   onPlaceOrder,
@@ -90,8 +93,10 @@ export const CustomerTableOrdering: React.FC<CustomerTableOrderingProps> = ({
 
   // Identify active order for this table from real-time existingOrders
   const activeTableOrders = useMemo(() => {
+    if (!tableNumber) return [];
+    const cleanTbl = tableNumber.trim().toLowerCase();
     return existingOrders.filter(o => 
-      o.tableNumber?.trim().toLowerCase() === tableNumber.trim().toLowerCase() && 
+      o.tableNumber && o.tableNumber.trim().toLowerCase() === cleanTbl && 
       o.paymentStatus === 'pending' && 
       !o.isArchived
     );
@@ -99,8 +104,10 @@ export const CustomerTableOrdering: React.FC<CustomerTableOrderingProps> = ({
 
   // Recently paid orders on this table
   const recentlyPaidOrders = useMemo(() => {
+    if (!tableNumber) return [];
+    const cleanTbl = tableNumber.trim().toLowerCase();
     return existingOrders.filter(o => 
-      o.tableNumber?.trim().toLowerCase() === tableNumber.trim().toLowerCase() && 
+      o.tableNumber && o.tableNumber.trim().toLowerCase() === cleanTbl && 
       o.paymentStatus === 'paid' && 
       !o.isArchived
     );
@@ -128,8 +135,12 @@ export const CustomerTableOrdering: React.FC<CustomerTableOrderingProps> = ({
   const filteredMenuItems = menuItems.filter(item => {
     if (!item.isAvailable) return false;
     const matchesCategory = selectedCategory === 'All' || item.category === selectedCategory;
-    const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          item.description.toLowerCase().includes(searchQuery.toLowerCase());
+    const q = (searchQuery || '').trim().toLowerCase();
+    const matchesSearch = !q ||
+      (item.name && item.name.toLowerCase().includes(q)) ||
+      (item.description && item.description.toLowerCase().includes(q)) ||
+      (item.category && item.category.toLowerCase().includes(q)) ||
+      (item.tags && Array.isArray(item.tags) && item.tags.some(t => t && typeof t === 'string' && t.toLowerCase().includes(q)));
     const matchesDietary = 
       dietaryFilter === 'all' ? true :
       dietaryFilter === 'veg' ? item.isVeg :
@@ -888,20 +899,36 @@ export const CustomerTableOrdering: React.FC<CustomerTableOrderingProps> = ({
                     </p>
 
                     <div className="flex flex-wrap items-center gap-1 mt-1.5">
-                      {item.isVeg && (
-                        <span className="px-1.5 py-0.5 rounded bg-emerald-950 border border-emerald-800 text-emerald-400 text-[9px] font-bold">
-                          Veg
-                        </span>
-                      )}
-                      {item.isSpicy && (
-                        <span className="px-1.5 py-0.5 rounded bg-red-950 border border-red-800 text-red-400 text-[9px] font-bold">
-                          Spicy
-                        </span>
-                      )}
-                      {item.isGlutenFree && (
-                        <span className="px-1.5 py-0.5 rounded bg-amber-950 border border-amber-800 text-amber-400 text-[9px] font-bold">
-                          GF
-                        </span>
+                      {item.tags && item.tags.length > 0 ? (
+                        item.tags.map((tagName) => {
+                          const style = getTagStyle(tagName, tags);
+                          return (
+                            <span
+                              key={tagName}
+                              className={`px-1.5 py-0.5 rounded text-[9px] font-bold border ${style.badge}`}
+                            >
+                              {tagName}
+                            </span>
+                          );
+                        })
+                      ) : (
+                        <>
+                          {item.isVeg && (
+                            <span className="px-1.5 py-0.5 rounded bg-emerald-950 border border-emerald-800 text-emerald-400 text-[9px] font-bold">
+                              Veg
+                            </span>
+                          )}
+                          {item.isSpicy && (
+                            <span className="px-1.5 py-0.5 rounded bg-red-950 border border-red-800 text-red-400 text-[9px] font-bold">
+                              Spicy
+                            </span>
+                          )}
+                          {item.isGlutenFree && (
+                            <span className="px-1.5 py-0.5 rounded bg-amber-950 border border-amber-800 text-amber-400 text-[9px] font-bold">
+                              GF
+                            </span>
+                          )}
+                        </>
                       )}
                     </div>
                   </div>

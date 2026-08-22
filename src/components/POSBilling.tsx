@@ -18,23 +18,25 @@ import {
   Leaf, 
   Wheat, 
   ChevronRight,
-  Clock
+  Clock,
+  LayoutGrid,
+  List
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
-import { MenuItem, OrderItem, BillOrder, RestaurantProfile, OrderType, PaymentMethod, PaymentStatus, StaffUser } from '../types';
+import { MenuItem, OrderItem, BillOrder, RestaurantProfile, OrderType, PaymentMethod, PaymentStatus, StaffUser, MenuTag } from '../types';
 import { formatCurrency, generateId, generateNextReceiptNumber } from '../utils/formatters';
+import { getTagStyle } from '../utils/tagUtils';
 
 interface POSBillingProps {
   menuItems: MenuItem[];
   existingOrders: BillOrder[];
   profile: RestaurantProfile;
   categories?: string[];
+  tags?: MenuTag[];
   currentUser?: StaffUser | null;
   onSaveOrder: (order: BillOrder) => void;
   onViewInvoice: (order: BillOrder) => void;
   onOpenTableQR?: () => void;
-  onCloseTerminal?: () => void;
-  onOpenDailySummary?: () => void;
 }
 
 const TABLES = [
@@ -48,21 +50,20 @@ export const POSBilling: React.FC<POSBillingProps> = ({
   existingOrders,
   profile,
   categories: passedCategories,
+  tags = [],
   currentUser,
   onSaveOrder,
   onViewInvoice,
   onOpenTableQR,
-  onCloseTerminal,
-  onOpenDailySummary,
 }) => {
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [dietaryFilter, setDietaryFilter] = useState<'all' | 'veg' | 'gluten-free' | 'spicy'>('all');
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   
   // Order Configuration State
   const [orderType, setOrderType] = useState<OrderType>('dine-in');
   const [tableNumber, setTableNumber] = useState<string>('Table 1');
-  const [serverName, setServerName] = useState<string>('Marco');
   const [customerName, setCustomerName] = useState<string>('');
   const [customerPhone, setCustomerPhone] = useState<string>('');
   
@@ -88,8 +89,10 @@ export const POSBilling: React.FC<POSBillingProps> = ({
 
   // Table pending order helper to determine live availability
   const getTablePendingOrder = (tbl: string) => {
+    if (!tbl) return undefined;
+    const cleanTbl = tbl.trim().toLowerCase();
     return existingOrders.find(o => 
-      o.tableNumber?.toLowerCase() === tbl.toLowerCase() && 
+      o.tableNumber && o.tableNumber.trim().toLowerCase() === cleanTbl && 
       o.paymentStatus === 'pending' && 
       !o.isArchived
     );
@@ -109,8 +112,12 @@ export const POSBilling: React.FC<POSBillingProps> = ({
   // Filtered Menu Items
   const filteredMenuItems = menuItems.filter(item => {
     const matchesCategory = selectedCategory === 'All' || item.category === selectedCategory;
-    const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          item.description.toLowerCase().includes(searchQuery.toLowerCase());
+    const q = (searchQuery || '').trim().toLowerCase();
+    const matchesSearch = !q ||
+      (item.name && item.name.toLowerCase().includes(q)) ||
+      (item.description && item.description.toLowerCase().includes(q)) ||
+      (item.category && item.category.toLowerCase().includes(q)) ||
+      (item.tags && Array.isArray(item.tags) && item.tags.some(t => t && typeof t === 'string' && t.toLowerCase().includes(q)));
     const matchesDietary = 
       dietaryFilter === 'all' ? true :
       dietaryFilter === 'veg' ? item.isVeg :
@@ -202,7 +209,7 @@ export const POSBilling: React.FC<POSBillingProps> = ({
       invoiceNumber: generateNextReceiptNumber(existingOrders, profile.receiptPrefix),
       orderType,
       tableNumber: orderType === 'dine-in' ? tableNumber : undefined,
-      serverName,
+      serverName: currentUser?.name || undefined,
       customerName: customerName.trim() || undefined,
       customerPhone: customerPhone.trim() || undefined,
       items: [...cart],
@@ -315,7 +322,7 @@ export const POSBilling: React.FC<POSBillingProps> = ({
                   setOrderType(type);
                   if (type !== 'dine-in') setApplyServiceCharge(false);
                 }}
-                className={`px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-bold capitalize whitespace-nowrap transition-all ${
+                className={`px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-bold capitalize whitespace-nowrap transition-all cursor-pointer ${
                   orderType === type
                     ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-amber-400 shadow-xs'
                     : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
@@ -374,49 +381,11 @@ export const POSBilling: React.FC<POSBillingProps> = ({
               )}
             </div>
           )}
-
-          {/* Server Attribution & Terminal Closeout Button */}
-          <div className="flex items-center gap-2 ml-auto sm:ml-0">
-            <div className="flex items-center gap-1.5">
-              <span className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 font-medium hidden sm:inline">Server:</span>
-              <select
-                value={serverName}
-                onChange={(e) => setServerName(e.target.value)}
-                className="text-xs bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1 font-semibold text-slate-800 dark:text-slate-200 focus:outline-none"
-              >
-                <option value="Marco">Marco V.</option>
-                <option value="Giulia">Giulia R.</option>
-                <option value="Chef Antonio">Antonio (Chef)</option>
-                <option value="Front Desk">Front Desk</option>
-              </select>
-            </div>
-
-            {/* Daily Sales Summary / Close POS Terminal Action Button */}
-            {(onCloseTerminal || onOpenDailySummary) && (
-              <button
-                type="button"
-                id="pos-close-terminal-btn"
-                onClick={() => {
-                  if (onCloseTerminal) {
-                    onCloseTerminal();
-                  } else if (onOpenDailySummary) {
-                    onOpenDailySummary();
-                  }
-                }}
-                title="Daily Sales Summary & Closeout POS Terminal"
-                className="px-2.5 py-1 bg-amber-500 hover:bg-amber-400 text-slate-950 rounded-lg text-xs font-black transition-all shadow-xs flex items-center gap-1.5 cursor-pointer shrink-0"
-              >
-                <DollarSign className="w-3.5 h-3.5 stroke-[2.5]" />
-                <span className="hidden md:inline">Daily Sales / Close Terminal</span>
-                <span className="md:hidden">Close POS</span>
-              </button>
-            )}
-          </div>
         </div>
 
-        {/* Search & Dietary Filters Bar */}
+        {/* Search, Dietary Filters & View Mode Bar */}
         <div className="p-2.5 sm:p-3.5 border-b border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-2.5 sm:gap-3 bg-white dark:bg-slate-900">
-          <div className="relative w-full sm:w-80">
+          <div className="relative w-full sm:w-72 md:w-80">
             <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
             <input
               type="text"
@@ -428,55 +397,91 @@ export const POSBilling: React.FC<POSBillingProps> = ({
             {searchQuery && (
               <button 
                 onClick={() => setSearchQuery('')}
-                className="absolute right-2.5 top-2 text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                className="absolute right-2.5 top-2 text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
               >
                 ✕
               </button>
             )}
           </div>
 
-          {/* Dietary Filters */}
-          <div className="flex items-center gap-1.5 w-full sm:w-auto overflow-x-auto pb-0.5 sm:pb-0">
-            <button
-              onClick={() => setDietaryFilter('all')}
-              className={`px-2.5 py-1 text-xs rounded-lg font-medium whitespace-nowrap transition-all ${
-                dietaryFilter === 'all'
-                  ? 'bg-slate-900 dark:bg-amber-500 text-white dark:text-slate-950 font-bold'
-                  : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
-              }`}
-            >
-              All
-            </button>
-            <button
-              onClick={() => setDietaryFilter('veg')}
-              className={`px-2.5 py-1 text-xs rounded-lg font-medium whitespace-nowrap flex items-center gap-1 transition-all ${
-                dietaryFilter === 'veg'
-                  ? 'bg-emerald-600 text-white font-bold'
-                  : 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-900/40'
-              }`}
-            >
-              <Leaf className="w-3 h-3" /> Veg
-            </button>
-            <button
-              onClick={() => setDietaryFilter('spicy')}
-              className={`px-2.5 py-1 text-xs rounded-lg font-medium whitespace-nowrap flex items-center gap-1 transition-all ${
-                dietaryFilter === 'spicy'
-                  ? 'bg-red-600 text-white font-bold'
-                  : 'bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300 hover:bg-red-100 dark:hover:bg-red-900/40'
-              }`}
-            >
-              <Flame className="w-3 h-3" /> Spicy
-            </button>
-            <button
-              onClick={() => setDietaryFilter('gluten-free')}
-              className={`px-2.5 py-1 text-xs rounded-lg font-medium whitespace-nowrap flex items-center gap-1 transition-all ${
-                dietaryFilter === 'gluten-free'
-                  ? 'bg-amber-600 text-white font-bold'
-                  : 'bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900/40'
-              }`}
-            >
-              <Wheat className="w-3 h-3" /> GF
-            </button>
+          <div className="flex items-center justify-between w-full sm:w-auto gap-2">
+            {/* Dietary Filters */}
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 sm:pb-0">
+              <button
+                type="button"
+                onClick={() => setDietaryFilter('all')}
+                className={`px-2.5 py-1 text-xs rounded-lg font-medium whitespace-nowrap transition-all cursor-pointer ${
+                  dietaryFilter === 'all'
+                    ? 'bg-slate-900 dark:bg-amber-500 text-white dark:text-slate-950 font-bold'
+                    : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
+                }`}
+              >
+                All
+              </button>
+              <button
+                type="button"
+                onClick={() => setDietaryFilter('veg')}
+                className={`px-2.5 py-1 text-xs rounded-lg font-medium whitespace-nowrap flex items-center gap-1 transition-all cursor-pointer ${
+                  dietaryFilter === 'veg'
+                    ? 'bg-emerald-600 text-white font-bold'
+                    : 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-900/40'
+                }`}
+              >
+                <Leaf className="w-3 h-3" /> Veg
+              </button>
+              <button
+                type="button"
+                onClick={() => setDietaryFilter('spicy')}
+                className={`px-2.5 py-1 text-xs rounded-lg font-medium whitespace-nowrap flex items-center gap-1 transition-all cursor-pointer ${
+                  dietaryFilter === 'spicy'
+                    ? 'bg-red-600 text-white font-bold'
+                    : 'bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300 hover:bg-red-100 dark:hover:bg-red-900/40'
+                }`}
+              >
+                <Flame className="w-3 h-3" /> Spicy
+              </button>
+              <button
+                type="button"
+                onClick={() => setDietaryFilter('gluten-free')}
+                className={`px-2.5 py-1 text-xs rounded-lg font-medium whitespace-nowrap flex items-center gap-1 transition-all cursor-pointer ${
+                  dietaryFilter === 'gluten-free'
+                    ? 'bg-amber-600 text-white font-bold'
+                    : 'bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900/40'
+                }`}
+              >
+                <Wheat className="w-3 h-3" /> GF
+              </button>
+            </div>
+
+            {/* Display Option: Grid and List View Toggle */}
+            <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-0.5 rounded-xl border border-slate-200 dark:border-slate-700 shrink-0 ml-1">
+              <button
+                type="button"
+                onClick={() => setViewMode('grid')}
+                title="Grid View"
+                className={`px-2 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1 cursor-pointer ${
+                  viewMode === 'grid'
+                    ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-amber-400 shadow-xs'
+                    : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                }`}
+              >
+                <LayoutGrid className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline text-[11px]">Grid</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewMode('list')}
+                title="List View"
+                className={`px-2 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1 cursor-pointer ${
+                  viewMode === 'list'
+                    ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-amber-400 shadow-xs'
+                    : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                }`}
+              >
+                <List className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline text-[11px]">List</span>
+              </button>
+            </div>
           </div>
         </div>
 
@@ -485,8 +490,9 @@ export const POSBilling: React.FC<POSBillingProps> = ({
           {categories.map((cat) => (
             <button
               key={cat}
+              type="button"
               onClick={() => setSelectedCategory(cat)}
-              className={`px-2.5 sm:px-3 py-1 sm:py-1.5 text-xs rounded-xl font-bold whitespace-nowrap transition-all ${
+              className={`px-2.5 sm:px-3 py-1 sm:py-1.5 text-xs rounded-xl font-bold whitespace-nowrap transition-all cursor-pointer ${
                 selectedCategory === cat
                   ? 'bg-slate-900 dark:bg-amber-500 text-white dark:text-slate-950 shadow-xs'
                   : 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'
@@ -497,87 +503,245 @@ export const POSBilling: React.FC<POSBillingProps> = ({
           ))}
         </div>
 
-        {/* Menu Items Grid: 2 Columns on mobile, 3-4 Columns on desktop */}
+        {/* Menu Items Catalog: Grid or List Display Mode */}
         <div className="flex-1 p-2.5 sm:p-4 overflow-y-auto bg-slate-50/30 dark:bg-slate-950/40 pb-20 lg:pb-4">
-          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-2.5 sm:gap-3.5">
-            {filteredMenuItems.map((item) => {
-              const inCartCount = cart.find(i => i.menuItemId === item.id)?.quantity || 0;
-              return (
-                <div
-                  key={item.id}
-                  onClick={() => handleAddToCart(item)}
-                  className="bg-white dark:bg-slate-800/90 rounded-xl border border-slate-200 dark:border-slate-700 hover:border-amber-400 dark:hover:border-amber-500 hover:shadow-md transition-all cursor-pointer flex flex-col justify-between group relative overflow-hidden active:scale-[0.98]"
-                >
-                  {inCartCount > 0 && (
-                    <div className="absolute top-1.5 right-1.5 z-10 px-1.5 sm:px-2 py-0.5 bg-slate-900/90 dark:bg-amber-500 text-amber-400 dark:text-slate-950 backdrop-blur-xs rounded-full flex items-center justify-center text-[10px] sm:text-xs font-bold shadow-md">
-                      {inCartCount} in bill
-                    </div>
-                  )}
+          {viewMode === 'grid' ? (
+            /* Grid View */
+            <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-2.5 sm:gap-3.5">
+              {filteredMenuItems.map((item) => {
+                const inCartCount = cart.find(i => i.menuItemId === item.id)?.quantity || 0;
+                return (
+                  <div
+                    key={item.id}
+                    onClick={() => handleAddToCart(item)}
+                    className="bg-white dark:bg-slate-800/90 rounded-xl border border-slate-200 dark:border-slate-700 hover:border-amber-400 dark:hover:border-amber-500 hover:shadow-md transition-all cursor-pointer flex flex-col justify-between group relative overflow-hidden active:scale-[0.98]"
+                  >
+                    {inCartCount > 0 && (
+                      <div className="absolute top-1.5 right-1.5 z-10 px-1.5 sm:px-2 py-0.5 bg-slate-900/90 dark:bg-amber-500 text-amber-400 dark:text-slate-950 backdrop-blur-xs rounded-full flex items-center justify-center text-[10px] sm:text-xs font-bold shadow-md">
+                        {inCartCount} in bill
+                      </div>
+                    )}
 
-                  <div>
-                    {item.imageUrl ? (
-                      <div className="h-20 sm:h-28 w-full overflow-hidden bg-slate-100 dark:bg-slate-800 relative">
+                    <div>
+                      {item.imageUrl ? (
+                        <div className="h-20 sm:h-28 w-full overflow-hidden bg-slate-100 dark:bg-slate-800 relative">
+                          <img
+                            src={item.imageUrl}
+                            alt={item.name}
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                            loading="lazy"
+                          />
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-60" />
+                        </div>
+                      ) : null}
+
+                      <div className="p-2 sm:p-3.5">
+                        <div className="flex items-start justify-between gap-1">
+                          <h4 className="text-xs font-bold text-slate-900 dark:text-white group-hover:text-amber-800 dark:group-hover:text-amber-400 transition-colors line-clamp-1">
+                            {item.name}
+                          </h4>
+                        </div>
+                        
+                        <p className="text-[10px] sm:text-[11px] text-slate-500 dark:text-slate-400 line-clamp-1 sm:line-clamp-2 mt-0.5 sm:mt-1 leading-relaxed">
+                          {item.description}
+                        </p>
+
+                        <div className="flex flex-wrap items-center gap-1 mt-1 sm:mt-2">
+                          {item.tags && item.tags.length > 0 ? (
+                            item.tags.map((tagName) => {
+                              const style = getTagStyle(tagName, tags);
+                              return (
+                                <span
+                                  key={tagName}
+                                  className={`px-1.5 py-0.5 rounded text-[8px] sm:text-[9px] font-bold border ${style.badge}`}
+                                >
+                                  {tagName}
+                                </span>
+                              );
+                            })
+                          ) : (
+                            <>
+                              {item.isVeg && (
+                                <span className="px-1.5 py-0.5 bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/50 rounded text-[8px] sm:text-[9px] font-bold" title="Vegetarian">
+                                  VEG
+                                </span>
+                              )}
+                              {item.isSpicy && (
+                                <span className="px-1.5 py-0.5 bg-red-100 dark:bg-red-950/60 text-red-800 dark:text-red-300 border border-red-200 dark:border-red-800/50 rounded text-[8px] sm:text-[9px] font-bold" title="Spicy">
+                                  SPICY
+                                </span>
+                              )}
+                              {item.isGlutenFree && (
+                                <span className="px-1.5 py-0.5 bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800/50 rounded text-[8px] sm:text-[9px] font-bold" title="Gluten-Free">
+                                  GF
+                                </span>
+                              )}
+                            </>
+                          )}
+                          {item.preparationTime && (
+                            <span className="text-[9px] sm:text-[10px] text-slate-400 dark:text-slate-500 flex items-center gap-0.5 ml-auto">
+                              <Clock className="w-2.5 h-2.5" /> {item.preparationTime}m
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="px-2 sm:px-3.5 pb-2 sm:pb-3 pt-1.5 sm:pt-2 border-t border-slate-100 dark:border-slate-700/60 flex items-center justify-between gap-1">
+                      <span className="font-mono font-bold text-slate-900 dark:text-amber-400 text-xs sm:text-sm truncate">
+                        {formatCurrency(item.price, profile.currencySymbol)}
+                      </span>
+                      <button
+                        type="button"
+                        className="px-2 py-1 bg-amber-500 sm:bg-slate-100 sm:dark:bg-slate-700 sm:group-hover:bg-slate-900 sm:dark:group-hover:bg-amber-500 text-slate-950 sm:text-slate-800 sm:dark:text-slate-200 sm:group-hover:text-white sm:dark:group-hover:text-slate-950 rounded-lg text-[11px] sm:text-xs font-bold transition-all flex items-center gap-0.5 sm:gap-1 shrink-0 shadow-2xs sm:shadow-none"
+                      >
+                        <Plus className="w-3 h-3" /> <span className="hidden sm:inline">Add</span>
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            /* List View */
+            <div className="space-y-2">
+              {filteredMenuItems.map((item) => {
+                const cartItem = cart.find(i => i.menuItemId === item.id);
+                const inCartCount = cartItem?.quantity || 0;
+                return (
+                  <div
+                    key={item.id}
+                    className={`p-2.5 sm:p-3 bg-white dark:bg-slate-850/90 rounded-xl border transition-all flex items-center justify-between gap-3 ${
+                      inCartCount > 0
+                        ? 'border-amber-400 dark:border-amber-500/70 bg-amber-50/30 dark:bg-amber-950/20 shadow-xs'
+                        : 'border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600 hover:shadow-xs'
+                    }`}
+                  >
+                    {/* Left: Thumbnail & Details */}
+                    <div 
+                      className="flex items-center gap-3 min-w-0 flex-1 cursor-pointer"
+                      onClick={() => handleAddToCart(item)}
+                    >
+                      {item.imageUrl ? (
                         <img
                           src={item.imageUrl}
                           alt={item.name}
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                          className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl object-cover shrink-0 border border-slate-200 dark:border-slate-700 shadow-2xs"
                           loading="lazy"
                         />
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-60" />
-                      </div>
-                    ) : null}
-
-                    <div className="p-2 sm:p-3.5">
-                      <div className="flex items-start justify-between gap-1">
-                        <h4 className="text-xs font-bold text-slate-900 dark:text-white group-hover:text-amber-800 dark:group-hover:text-amber-400 transition-colors line-clamp-1">
-                          {item.name}
-                        </h4>
-                      </div>
+                      ) : (
+                        <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-400 shrink-0 border border-slate-200 dark:border-slate-700">
+                          <Utensils className="w-5 h-5" />
+                        </div>
+                      )}
                       
-                      <p className="text-[10px] sm:text-[11px] text-slate-500 dark:text-slate-400 line-clamp-1 sm:line-clamp-2 mt-0.5 sm:mt-1 leading-relaxed">
-                        {item.description}
-                      </p>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <h4 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white truncate">
+                            {item.name}
+                          </h4>
+                          <span className="text-[10px] px-1.5 py-0.2 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 rounded-md font-medium">
+                            {item.category}
+                          </span>
+                          {item.tags && item.tags.length > 0 ? (
+                            item.tags.map((tagName) => {
+                              const style = getTagStyle(tagName, tags);
+                              return (
+                                <span
+                                  key={tagName}
+                                  className={`px-1.5 py-0.5 rounded text-[8px] sm:text-[9px] font-bold border ${style.badge}`}
+                                >
+                                  {tagName}
+                                </span>
+                              );
+                            })
+                          ) : (
+                            <>
+                              {item.isVeg && (
+                                <span className="px-1.5 py-0.5 bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/50 rounded text-[8px] sm:text-[9px] font-bold" title="Vegetarian">
+                                  VEG
+                                </span>
+                              )}
+                              {item.isSpicy && (
+                                <span className="px-1.5 py-0.5 bg-red-100 dark:bg-red-950/60 text-red-800 dark:text-red-300 border border-red-200 dark:border-red-800/50 rounded text-[8px] sm:text-[9px] font-bold" title="Spicy">
+                                  SPICY
+                                </span>
+                              )}
+                              {item.isGlutenFree && (
+                                <span className="px-1.5 py-0.5 bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800/50 rounded text-[8px] sm:text-[9px] font-bold" title="Gluten-Free">
+                                  GF
+                                </span>
+                              )}
+                            </>
+                          )}
+                        </div>
 
-                      <div className="flex flex-wrap items-center gap-1 mt-1 sm:mt-2">
-                        {item.isVeg && (
-                          <span className="px-1 py-0.2 bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 rounded text-[8px] sm:text-[9px] font-bold" title="Vegetarian">
-                            VEG
-                          </span>
+                        {item.description && (
+                          <p className="text-[11px] text-slate-500 dark:text-slate-400 line-clamp-1 mt-0.5 max-w-xl">
+                            {item.description}
+                          </p>
                         )}
-                        {item.isSpicy && (
-                          <span className="px-1 py-0.2 bg-red-100 dark:bg-red-950/60 text-red-800 dark:text-red-300 rounded text-[8px] sm:text-[9px] font-bold" title="Spicy">
-                            SPICY
-                          </span>
-                        )}
-                        {item.isGlutenFree && (
-                          <span className="px-1 py-0.2 bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 rounded text-[8px] sm:text-[9px] font-bold" title="Gluten-Free">
-                            GF
-                          </span>
-                        )}
+
                         {item.preparationTime && (
-                          <span className="text-[9px] sm:text-[10px] text-slate-400 dark:text-slate-500 flex items-center gap-0.5 ml-auto">
-                            <Clock className="w-2.5 h-2.5" /> {item.preparationTime}m
-                          </span>
+                          <div className="text-[10px] text-slate-400 dark:text-slate-500 flex items-center gap-1 mt-0.5">
+                            <Clock className="w-2.5 h-2.5" /> <span>{item.preparationTime} mins prep</span>
+                          </div>
                         )}
                       </div>
                     </div>
-                  </div>
 
-                  <div className="px-2 sm:px-3.5 pb-2 sm:pb-3 pt-1.5 sm:pt-2 border-t border-slate-100 dark:border-slate-700/60 flex items-center justify-between gap-1">
-                    <span className="font-mono font-bold text-slate-900 dark:text-amber-400 text-xs sm:text-sm truncate">
-                      {formatCurrency(item.price, profile.currencySymbol)}
-                    </span>
-                    <button
-                      type="button"
-                      className="px-2 py-1 bg-amber-500 sm:bg-slate-100 sm:dark:bg-slate-700 sm:group-hover:bg-slate-900 sm:dark:group-hover:bg-amber-500 text-slate-950 sm:text-slate-800 sm:dark:text-slate-200 sm:group-hover:text-white sm:dark:group-hover:text-slate-950 rounded-lg text-[11px] sm:text-xs font-bold transition-all flex items-center gap-0.5 sm:gap-1 shrink-0 shadow-2xs sm:shadow-none"
-                    >
-                      <Plus className="w-3 h-3" /> <span className="hidden sm:inline">Add</span>
-                    </button>
+                    {/* Right: Price & Fast Quantity Selector */}
+                    <div className="flex items-center gap-2.5 sm:gap-3 shrink-0">
+                      <div className="text-right">
+                        <span className="font-mono font-bold text-xs sm:text-sm text-slate-900 dark:text-amber-400 block">
+                          {formatCurrency(item.price, profile.currencySymbol)}
+                        </span>
+                      </div>
+
+                      {inCartCount > 0 && cartItem ? (
+                        <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl border border-slate-200 dark:border-slate-700 shadow-2xs">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleUpdateQuantity(cartItem.id, -1);
+                            }}
+                            className="w-6 h-6 flex items-center justify-center rounded-lg bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors cursor-pointer"
+                            title="Decrease quantity"
+                          >
+                            <Minus className="w-3 h-3" />
+                          </button>
+                          <span className="w-5 text-center font-bold text-xs font-mono text-slate-900 dark:text-white">
+                            {inCartCount}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleAddToCart(item);
+                            }}
+                            className="w-6 h-6 flex items-center justify-center rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold transition-colors cursor-pointer"
+                            title="Increase quantity"
+                          >
+                            <Plus className="w-3 h-3" />
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => handleAddToCart(item)}
+                          className="px-3 py-1.5 bg-slate-900 dark:bg-amber-500 hover:bg-slate-800 dark:hover:bg-amber-400 text-amber-400 dark:text-slate-950 rounded-xl text-xs font-bold transition-all flex items-center gap-1 cursor-pointer shadow-xs active:scale-95"
+                        >
+                          <Plus className="w-3.5 h-3.5" />
+                          <span>Add</span>
+                        </button>
+                      )}
+                    </div>
                   </div>
-                </div>
-              );
-            })}
-          </div>
+                );
+              })}
+            </div>
+          )}
 
           {filteredMenuItems.length === 0 && (
             <div className="flex flex-col items-center justify-center py-16 text-slate-400">

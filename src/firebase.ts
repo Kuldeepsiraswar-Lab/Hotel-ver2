@@ -13,7 +13,7 @@ import {
   orderBy
 } from 'firebase/firestore';
 import firebaseConfig from '../firebase-applet-config.json';
-import { MenuItem, BillOrder, Expense, RestaurantProfile, StaffUser, AppNotification } from './types';
+import { MenuItem, BillOrder, Expense, RestaurantProfile, StaffUser, AppNotification, MenuTag } from './types';
 
 // Initialize Firebase App
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
@@ -33,6 +33,7 @@ export const COLLECTIONS = {
   ORDERS: 'orders',
   EXPENSES: 'expenses',
   CATEGORIES: 'menu_categories',
+  TAGS: 'menu_tags',
   STAFF: 'staff_accounts',
   NOTIFICATIONS: 'notifications',
 };
@@ -267,6 +268,32 @@ export const CloudDatabaseService = {
     });
   },
 
+  // ================= MENU TAGS =================
+  async saveTags(tags: MenuTag[]) {
+    try {
+      const cleanList = sanitizeForFirestore(tags);
+      const docRef = doc(db, COLLECTIONS.TAGS, 'main_tags');
+      await setDoc(docRef, { list: cleanList }, { merge: true });
+      return true;
+    } catch (err) {
+      handleFirestoreError(err, OperationType.WRITE, COLLECTIONS.TAGS);
+      return false;
+    }
+  },
+
+  subscribeTags(onUpdate: (tags: MenuTag[]) => void) {
+    const docRef = doc(db, COLLECTIONS.TAGS, 'main_tags');
+    return onSnapshot(docRef, (snap) => {
+      if (snap.exists() && Array.isArray(snap.data()?.list)) {
+        onUpdate(snap.data().list);
+      } else {
+        onUpdate([]);
+      }
+    }, (error) => {
+      handleFirestoreError(error, OperationType.GET, COLLECTIONS.TAGS);
+    });
+  },
+
   // ================= STAFF & TEAM ACCOUNTS =================
   async saveStaffMember(staff: StaffUser) {
     try {
@@ -403,6 +430,7 @@ export const CloudDatabaseService = {
     orders: BillOrder[];
     expenses: Expense[];
     categories: string[];
+    tags?: MenuTag[];
     staff?: StaffUser[];
   }) {
     try {
@@ -412,7 +440,17 @@ export const CloudDatabaseService = {
       // 2. Categories
       await this.saveCategories(data.categories);
 
-      // 3. Menu Items (Batch write)
+      // 3. Tags (Batch write if provided)
+      if (data.tags && data.tags.length > 0) {
+        const tagsBatch = writeBatch(db);
+        for (const tag of data.tags) {
+          const tagRef = doc(db, COLLECTIONS.TAGS, tag.id);
+          tagsBatch.set(tagRef, sanitizeForFirestore(tag), { merge: true });
+        }
+        await tagsBatch.commit();
+      }
+
+      // 4. Menu Items (Batch write)
       const menuBatch = writeBatch(db);
       for (const item of data.menuItems) {
         const itemRef = doc(db, COLLECTIONS.MENU_ITEMS, item.id);
@@ -420,7 +458,7 @@ export const CloudDatabaseService = {
       }
       await menuBatch.commit();
 
-      // 4. Orders (Batch write)
+      // 5. Orders (Batch write)
       const ordersBatch = writeBatch(db);
       for (const order of data.orders) {
         const orderRef = doc(db, COLLECTIONS.ORDERS, order.id);
@@ -428,7 +466,7 @@ export const CloudDatabaseService = {
       }
       await ordersBatch.commit();
 
-      // 5. Expenses (Batch write)
+      // 6. Expenses (Batch write)
       const expensesBatch = writeBatch(db);
       for (const expense of data.expenses) {
         const expRef = doc(db, COLLECTIONS.EXPENSES, expense.id);
@@ -436,7 +474,7 @@ export const CloudDatabaseService = {
       }
       await expensesBatch.commit();
 
-      // 6. Staff Accounts (Batch write if provided)
+      // 7. Staff Accounts (Batch write if provided)
       if (data.staff && data.staff.length > 0) {
         const staffBatch = writeBatch(db);
         for (const s of data.staff) {

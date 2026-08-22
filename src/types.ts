@@ -209,6 +209,41 @@ export interface RestaurantProfile {
 
 export type StaffRole = 'owner' | 'manager' | 'cashier' | 'waiter' | 'kitchen';
 
+export type AppModule = 
+  | 'dashboard'
+  | 'pos'
+  | 'kitchen'
+  | 'tableqr'
+  | 'menu'
+  | 'invoices'
+  | 'expenses'
+  | 'financials'
+  | 'settings'
+  | 'staff';
+
+export interface StaffPermissions {
+  canApplyDiscounts?: boolean;
+  canVoidCancelOrders?: boolean;
+  canModifyMenuPricing?: boolean;
+  canManageExpenses?: boolean;
+  canAccessFinancials?: boolean;
+  canManageStaffRoster?: boolean;
+  canAccessSystemSettings?: boolean;
+  canReprintInvoices?: boolean;
+}
+
+export interface StationPreset {
+  id: string;
+  name: string;
+  code: string;
+  icon: string;
+  description: string;
+  defaultRole: StaffRole;
+  defaultModules: AppModule[];
+  defaultPermissions: StaffPermissions;
+  badgeColor: string;
+}
+
 export interface StaffUser {
   id: string;
   email: string;
@@ -222,5 +257,10 @@ export interface StaffUser {
   status?: 'active' | 'inactive';
   shiftStartedAt?: string;
   createdAt?: string;
+  // Station Setup & Module Visibility
+  assignedStation?: string; // e.g. "Main Counter POS #1", "Kitchen KDS Station"
+  stationCode?: string; // e.g. "STN-POS-01"
+  allowedModules?: AppModule[]; // Explicitly allowed module IDs
+  permissions?: StaffPermissions; // Granular operational permissions
 }
 

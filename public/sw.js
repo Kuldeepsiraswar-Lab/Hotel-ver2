@@ -1,5 +1,5 @@
-// Service Worker for RestoPOS - Restaurant Billing & POS Suite
-const CACHE_NAME = 'restopos-cache-v1';
+// Service Worker for ZookaRestoPos - Restaurant Billing & POS Suite
+const CACHE_NAME = 'zookarestopos-cache-v1';
 const PRECACHE_ASSETS = [
   '/',
   '/index.html',

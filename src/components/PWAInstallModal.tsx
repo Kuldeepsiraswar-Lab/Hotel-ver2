@@ -62,14 +62,14 @@ export const PWAInstallModal: React.FC<PWAInstallModalProps> = ({ isOpen, onClos
               <div>
                 <div className="flex items-center gap-2">
                   <h3 className="text-lg sm:text-xl font-bold text-white tracking-tight">
-                    Install RestoPOS App
+                    Install ZookaRestoPos App
                   </h3>
                   <span className="px-2 py-0.5 bg-amber-500/20 border border-amber-500/40 text-amber-300 font-bold text-[10px] rounded-full uppercase tracking-wider">
                     PWA Ready
                   </span>
                 </div>
                 <p className="text-xs sm:text-sm text-slate-300 mt-0.5">
-                  Launch RestoPOS in full-screen window with offline billing support
+                  Launch ZookaRestoPos in full-screen window with offline billing support
                 </p>
               </div>
             </div>
@@ -148,7 +148,7 @@ export const PWAInstallModal: React.FC<PWAInstallModalProps> = ({ isOpen, onClos
                   </li>
                   <li className="flex items-start gap-2">
                     <span className="w-5 h-5 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center font-bold text-[10px] shrink-0 mt-0.5">3</span>
-                    <span>Tap <strong>Add</strong> in the top right corner. The RestoPOS app icon will appear on your home screen!</span>
+                    <span>Tap <strong>Add</strong> in the top right corner. The ZookaRestoPos app icon will appear on your home screen!</span>
                   </li>
                 </ol>
               </div>
@@ -167,7 +167,7 @@ export const PWAInstallModal: React.FC<PWAInstallModalProps> = ({ isOpen, onClos
                   )}
                 </div>
                 <p className="text-xs text-slate-600 dark:text-slate-300 mb-3 leading-relaxed">
-                  Click the <strong>Install App</strong> button below, or click the download icon in your browser's address bar to install RestoPOS as a dedicated application window.
+                  Click the <strong>Install App</strong> button below, or click the download icon in your browser's address bar to install ZookaRestoPos as a dedicated application window.
                 </p>
 
                 {canInstall && !isInstalled && (
@@ -176,14 +176,14 @@ export const PWAInstallModal: React.FC<PWAInstallModalProps> = ({ isOpen, onClos
                     className="w-full py-2.5 px-4 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-sm rounded-xl shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-95"
                   >
                     <Download className="w-4 h-4" />
-                    <span>Install RestoPOS on this Device</span>
+                    <span>Install ZookaRestoPos on this Device</span>
                   </button>
                 )}
 
                 {isInstalled && (
                   <div className="flex items-center gap-2 text-xs font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/30 p-2.5 rounded-xl border border-emerald-200 dark:border-emerald-800">
                     <CheckCircle2 className="w-4 h-4 shrink-0" />
-                    <span>RestoPOS is installed and ready on this device!</span>
+                    <span>ZookaRestoPos is installed and ready on this device!</span>
                   </div>
                 )}
               </div>

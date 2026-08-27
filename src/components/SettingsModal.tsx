@@ -1196,7 +1196,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   </div>
 
                   <p className="text-xs text-slate-600 dark:text-slate-300">
-                    Install RestoPOS as an independent desktop or tablet application. The app caches static resources and offline data locally, allowing uninterrupted order taking, bill generation, and kitchen ticketing even if internet connectivity drops.
+                    Install ZookaRestoPos as an independent desktop or tablet application. The app caches static resources and offline data locally, allowing uninterrupted order taking, bill generation, and kitchen ticketing even if internet connectivity drops.
                   </p>
 
                   {/* Status Grid */}
@@ -1263,7 +1263,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                         className="px-3.5 py-2 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 rounded-xl font-bold text-xs flex items-center gap-1.5 shadow-md shadow-amber-500/20 cursor-pointer transition-all"
                       >
                         <Download className="w-4 h-4" />
-                        <span>{canInstall ? 'Install RestoPOS Application' : 'Installation Guide (iOS / Desktop)'}</span>
+                        <span>{canInstall ? 'Install ZookaRestoPos Application' : 'Installation Guide (iOS / Desktop)'}</span>
                       </button>
                     )}
 

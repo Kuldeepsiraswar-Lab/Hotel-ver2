@@ -1,6 +1,6 @@
 {
-  "name": "Restaurant Billing & Expense Manager",
-  "description": "Comprehensive restaurant billing, POS, table QR code scan & order suite, expense tracking, and invoice generator with AI receipt analysis and real-time Google Cloud Firestore sync.",
+  "name": "ZookaRestoPos",
+  "description": "ZookaRestoPos - Comprehensive restaurant billing, POS, table QR code scan & order suite, expense tracking, and invoice generator with AI receipt analysis and real-time Google Cloud Firestore sync.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

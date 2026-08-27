@@ -90,7 +90,7 @@ export const PWAProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setIsInstalled(true);
       setCanInstall(false);
       setDeferredPrompt(null);
-      console.log('[PWA] RestoPOS application was installed successfully.');
+      console.log('[PWA] ZookaRestoPos application was installed successfully.');
     };
 
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);

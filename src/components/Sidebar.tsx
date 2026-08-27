@@ -639,7 +639,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
                     {isCollapsed && hoveredTooltip === 'install-pwa' && (
                       <div className="hidden md:block absolute left-full ml-3 top-1/2 -translate-y-1/2 z-50 bg-slate-950 text-white border border-slate-700 px-3 py-1.5 rounded-xl text-xs font-bold shadow-2xl pointer-events-none whitespace-nowrap">
-                        Install RestoPOS App (PWA)
+                        Install ZookaRestoPos App (PWA)
                       </div>
                     )}
                   </div>

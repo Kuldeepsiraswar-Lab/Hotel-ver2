@@ -137,7 +137,7 @@ export const PWAInstallBanner: React.FC = () => {
               </div>
               <div className="min-w-0">
                 <div className="flex items-center gap-1.5">
-                  <h4 className="text-sm font-bold text-slate-100">Install RestoPOS</h4>
+                  <h4 className="text-sm font-bold text-slate-100">Install ZookaRestoPos</h4>
                   <span className="text-[10px] px-1.5 py-0.2 bg-amber-500/20 text-amber-300 font-bold rounded">PWA</span>
                 </div>
                 <p className="text-xs text-slate-300 mt-1 leading-snug">

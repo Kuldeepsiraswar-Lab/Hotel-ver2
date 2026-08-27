@@ -725,7 +725,7 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
               placeholder="Search dishes, tags, categories, ingredients..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-9 pr-3 py-1.5 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white focus:bg-white dark:focus:bg-slate-850 focus:ring-2 focus:ring-slate-900 dark:focus:ring-amber-500 focus:outline-none"
+              className="w-full pl-9 pr-3 py-1.5 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white focus:bg-white dark:focus:bg-slate-800 focus:ring-2 focus:ring-slate-900 dark:focus:ring-amber-500 focus:outline-none"
             />
           </div>
 
@@ -853,7 +853,7 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
               className={`px-2.5 py-1 text-xs rounded-xl font-bold whitespace-nowrap transition-all cursor-pointer flex items-center gap-1.5 border ${
                 dietaryFilter === 'NON_VEG'
                   ? 'bg-slate-800 text-white border-slate-900 shadow-xs'
-                  : 'bg-slate-100 dark:bg-slate-800/80 text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-700 hover:bg-slate-200 dark:hover:bg-slate-750'
+                  : 'bg-slate-100 dark:bg-slate-800/80 text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-700 hover:bg-slate-200 dark:hover:bg-slate-700'
               }`}
             >
               <span>Non-Veg</span>
@@ -1274,7 +1274,7 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
                 {filteredItems.map((item) => {
                   const margin = calculateMargin(item.price, item.costPrice);
                   return (
-                    <tr key={item.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-850/50 transition-colors">
+                    <tr key={item.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/50 transition-colors">
                       {/* Dish & Recipe Name */}
                       <td className="py-3 px-4">
                         <div className="flex items-center gap-3">
@@ -1531,7 +1531,7 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
                 ) : null}
 
                 {/* Image Selection Tabs */}
-                <div className="flex items-center gap-1 bg-slate-200/70 dark:bg-slate-750 p-1 rounded-lg">
+                <div className="flex items-center gap-1 bg-slate-200/70 dark:bg-slate-800 p-1 rounded-lg">
                   <button
                     type="button"
                     onClick={() => setImageInputTab('upload')}
@@ -1564,7 +1564,7 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
                 {/* Tab 1: Upload from Device */}
                 {imageInputTab === 'upload' && (
                   <div>
-                    <label className="border-2 border-dashed border-slate-300 dark:border-slate-700 hover:border-amber-500 bg-white dark:bg-slate-800 hover:bg-amber-50/20 dark:hover:bg-slate-750 rounded-xl p-4 flex flex-col items-center justify-center cursor-pointer transition-all">
+                    <label className="border-2 border-dashed border-slate-300 dark:border-slate-700 hover:border-amber-500 bg-white dark:bg-slate-800 hover:bg-amber-50/20 dark:hover:bg-slate-700 rounded-xl p-4 flex flex-col items-center justify-center cursor-pointer transition-all">
                       {isProcessingImage ? (
                         <div className="flex items-center gap-2 text-slate-600 dark:text-slate-400">
                           <Loader2 className="w-5 h-5 animate-spin text-amber-600 dark:text-amber-400" />
@@ -1795,7 +1795,7 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
                           className={`px-2.5 py-1 rounded-lg text-xs font-bold flex items-center gap-1.5 border transition-all cursor-pointer ${
                             isAssigned
                               ? `${style.badge} ring-2 ring-amber-400 dark:ring-amber-500 shadow-xs font-black`
-                              : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-750'
+                              : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700'
                           }`}
                         >
                           <span className={`w-1.5 h-1.5 rounded-full ${style.dot}`} />
@@ -2301,7 +2301,7 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
                   placeholder="Create new category (e.g. Chef Tasting, Cocktails)..."
                   value={newCategoryInput}
                   onChange={(e) => setNewCategoryInput(e.target.value)}
-                  className="flex-1 px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl focus:bg-white dark:focus:bg-slate-850 focus:ring-2 focus:ring-slate-900 dark:focus:ring-amber-500 focus:outline-none font-semibold text-slate-900 dark:text-white"
+                  className="flex-1 px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl focus:bg-white dark:focus:bg-slate-800 focus:ring-2 focus:ring-slate-900 dark:focus:ring-amber-500 focus:outline-none font-semibold text-slate-900 dark:text-white"
                 />
                 <button
                   type="submit"

@@ -469,7 +469,7 @@ export const NavDrawer: React.FC<NavDrawerProps> = ({
                         <Download className="w-4 h-4" />
                       </div>
                       <div>
-                        <span className="text-xs font-bold text-amber-300 block">Install RestoPOS App</span>
+                        <span className="text-xs font-bold text-amber-300 block">Install ZookaRestoPos App</span>
                         <span className="text-[10px] text-amber-400/80">Add to Home Screen for Offline POS</span>
                       </div>
                     </div>

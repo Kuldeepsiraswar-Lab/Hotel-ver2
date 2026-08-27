@@ -1,7 +1,7 @@
 {
-  "name": "RestoPOS - Restaurant Billing & POS Suite",
-  "short_name": "RestoPOS",
-  "description": "Comprehensive restaurant billing, high-speed POS, table QR self-ordering, kitchen display system, and expense management.",
+  "name": "ZookaRestoPos - Restaurant Billing & POS Suite",
+  "short_name": "ZookaRestoPos",
+  "description": "ZookaRestoPos: Comprehensive restaurant billing, high-speed POS, table QR self-ordering, kitchen display system, and expense management.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

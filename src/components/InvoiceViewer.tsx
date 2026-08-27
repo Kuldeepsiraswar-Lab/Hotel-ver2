@@ -574,7 +574,7 @@ Thank you for choosing ${profile.name}!`;
         </div>
 
         {/* Invoice / Receipt Main Render Container */}
-        <div className="p-4 sm:p-8 overflow-y-auto flex-1 bg-slate-200/60 flex justify-center print:p-0 print:m-0 print:overflow-visible print:bg-transparent print:block">
+        <div className="p-4 sm:p-8 overflow-y-auto flex-1 bg-slate-200/60 dark:bg-slate-950 flex justify-center print:p-0 print:m-0 print:overflow-visible print:bg-transparent print:block">
           
           <div 
             id="printable-invoice-content"

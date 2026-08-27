@@ -306,26 +306,26 @@ export const ExpenseTracker: React.FC<ExpenseTrackerProps> = ({
       </div>
 
       {/* Category Breakdown Bars */}
-      <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs">
-        <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider mb-3">
+      <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs">
+        <h3 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider mb-3">
           Expense Distribution by Category
         </h3>
         <div className="space-y-2.5">
           {categoryTotals.map(item => (
             <div key={item.category} className="space-y-1">
-              <div className="flex justify-between text-xs font-semibold text-slate-700">
+              <div className="flex justify-between text-xs font-semibold text-slate-700 dark:text-slate-300">
                 <span className="flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-slate-800" />
+                  <span className="w-2 h-2 rounded-full bg-slate-800 dark:bg-amber-400" />
                   {item.category}
                 </span>
                 <div className="font-mono">
-                  <span className="font-bold text-slate-900">{formatCurrency(item.total, profile.currencySymbol)}</span>
-                  <span className="text-slate-400 ml-2">({item.percentage.toFixed(1)}%)</span>
+                  <span className="font-bold text-slate-900 dark:text-white">{formatCurrency(item.total, profile.currencySymbol)}</span>
+                  <span className="text-slate-400 dark:text-slate-500 ml-2">({item.percentage.toFixed(1)}%)</span>
                 </div>
               </div>
-              <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
+              <div className="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-2 overflow-hidden">
                 <div 
-                  className="bg-slate-900 h-2 rounded-full transition-all duration-500" 
+                  className="bg-slate-900 dark:bg-amber-500 h-2 rounded-full transition-all duration-500" 
                   style={{ width: `${item.percentage}%` }}
                 />
               </div>
@@ -335,7 +335,7 @@ export const ExpenseTracker: React.FC<ExpenseTrackerProps> = ({
       </div>
 
       {/* Search & Category Filter Header */}
-      <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex flex-col md:flex-row items-center justify-between gap-3">
+      <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs flex flex-col md:flex-row items-center justify-between gap-3">
         <div className="relative w-full md:w-80">
           <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
           <input
@@ -343,7 +343,7 @@ export const ExpenseTracker: React.FC<ExpenseTrackerProps> = ({
             placeholder="Search vendor, invoice #, memo..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-9 pr-3 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-slate-900 focus:outline-none"
+            className="w-full pl-9 pr-3 py-1.5 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white focus:bg-white dark:focus:bg-slate-800 focus:ring-2 focus:ring-slate-900 dark:focus:ring-amber-500 focus:outline-none"
           />
         </div>
 
@@ -351,7 +351,7 @@ export const ExpenseTracker: React.FC<ExpenseTrackerProps> = ({
           <select
             value={selectedCategory}
             onChange={(e) => setSelectedCategory(e.target.value)}
-            className="text-xs bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 font-semibold text-slate-700 focus:outline-none"
+            className="text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-1.5 font-semibold text-slate-700 dark:text-slate-200 focus:outline-none"
           >
             <option value="All">All Categories</option>
             {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
@@ -360,7 +360,7 @@ export const ExpenseTracker: React.FC<ExpenseTrackerProps> = ({
           <select
             value={selectedStatus}
             onChange={(e) => setSelectedStatus(e.target.value)}
-            className="text-xs bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 font-semibold text-slate-700 focus:outline-none"
+            className="text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-1.5 font-semibold text-slate-700 dark:text-slate-200 focus:outline-none"
           >
             <option value="All">All Statuses</option>
             <option value="paid">Paid</option>
@@ -371,11 +371,11 @@ export const ExpenseTracker: React.FC<ExpenseTrackerProps> = ({
       </div>
 
       {/* Expense Records Data Table */}
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs border-collapse">
             <thead>
-              <tr className="bg-slate-900 text-white font-semibold">
+              <tr className="bg-slate-900 dark:bg-slate-800/90 text-white dark:text-slate-200 font-semibold border-b dark:border-slate-700">
                 <th className="py-3 px-4">Date</th>
                 <th className="py-3 px-4">Vendor / Supplier</th>
                 <th className="py-3 px-4">Bill / Invoice #</th>
@@ -387,42 +387,42 @@ export const ExpenseTracker: React.FC<ExpenseTrackerProps> = ({
                 <th className="py-3 px-4 text-right">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
               {filteredExpenses.map((exp) => (
-                <tr key={exp.id} className="hover:bg-slate-50/80 transition-colors">
-                  <td className="py-3.5 px-4 text-slate-600 font-mono">
+                <tr key={exp.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/50 transition-colors">
+                  <td className="py-3.5 px-4 text-slate-600 dark:text-slate-400 font-mono">
                     {formatDate(exp.date)}
                   </td>
                   <td className="py-3.5 px-4">
-                    <div className="font-bold text-slate-900">{exp.vendorName}</div>
+                    <div className="font-bold text-slate-900 dark:text-white">{exp.vendorName}</div>
                     {exp.notes && (
-                      <div className="text-[11px] text-slate-500 italic line-clamp-1">{exp.notes}</div>
+                      <div className="text-[11px] text-slate-500 dark:text-slate-400 italic line-clamp-1">{exp.notes}</div>
                     )}
                   </td>
-                  <td className="py-3.5 px-4 font-mono text-slate-700">
+                  <td className="py-3.5 px-4 font-mono text-slate-700 dark:text-slate-300">
                     {exp.invoiceNumber || '—'}
                   </td>
                   <td className="py-3.5 px-4">
-                    <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-slate-100 text-slate-800">
+                    <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 border border-transparent dark:border-slate-700">
                       {exp.category}
                     </span>
                   </td>
-                  <td className="py-3.5 px-4 text-slate-700">
+                  <td className="py-3.5 px-4 text-slate-700 dark:text-slate-300">
                     {exp.paymentMethod}
                   </td>
-                  <td className="py-3.5 px-4 text-right font-mono text-slate-500">
+                  <td className="py-3.5 px-4 text-right font-mono text-slate-500 dark:text-slate-400">
                     {exp.taxAmount ? formatCurrency(exp.taxAmount, profile.currencySymbol) : '—'}
                   </td>
-                  <td className="py-3.5 px-4 text-right font-mono font-bold text-slate-900 text-sm">
+                  <td className="py-3.5 px-4 text-right font-mono font-bold text-slate-900 dark:text-white text-sm">
                     {formatCurrency(exp.amount, profile.currencySymbol)}
                   </td>
                   <td className="py-3.5 px-4 text-center">
                     {exp.paymentStatus === 'paid' ? (
-                      <span className="px-2.5 py-0.5 bg-emerald-100 text-emerald-800 font-bold rounded-full text-[11px]">
+                      <span className="px-2.5 py-0.5 bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/50 font-bold rounded-full text-[11px]">
                         Paid
                       </span>
                     ) : (
-                      <span className="px-2.5 py-0.5 bg-red-100 text-red-800 font-bold rounded-full text-[11px]">
+                      <span className="px-2.5 py-0.5 bg-red-100 dark:bg-red-950/60 text-red-800 dark:text-red-300 border border-red-200 dark:border-red-800/50 font-bold rounded-full text-[11px]">
                         Pending
                       </span>
                     )}
@@ -444,8 +444,8 @@ export const ExpenseTracker: React.FC<ExpenseTrackerProps> = ({
                       }}
                       className={`p-1.5 rounded transition-colors cursor-pointer ${
                         isAdmin 
-                          ? 'text-slate-400 hover:text-red-600 hover:bg-red-50' 
-                          : 'text-slate-400 hover:text-amber-600 hover:bg-amber-50'
+                          ? 'text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40' 
+                          : 'text-slate-400 hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/40'
                       }`}
                       title={isAdmin ? "Delete Record (Admin)" : "Delete Record (Requires Admin PIN)"}
                     >
@@ -459,10 +459,10 @@ export const ExpenseTracker: React.FC<ExpenseTrackerProps> = ({
         </div>
 
         {filteredExpenses.length === 0 && (
-          <div className="py-12 text-center text-slate-400">
-            <TrendingDown className="w-10 h-10 mx-auto mb-2 stroke-1 text-slate-300" />
-            <p className="text-sm font-semibold text-slate-600">No expense records found</p>
-            <p className="text-xs text-slate-400">Try adjusting your category filter or click "Scan Receipt with AI".</p>
+          <div className="py-12 text-center text-slate-400 dark:text-slate-500">
+            <TrendingDown className="w-10 h-10 mx-auto mb-2 stroke-1 text-slate-300 dark:text-slate-600" />
+            <p className="text-sm font-semibold text-slate-600 dark:text-slate-300">No expense records found</p>
+            <p className="text-xs text-slate-400 dark:text-slate-500">Try adjusting your category filter or click "Scan Receipt with AI".</p>
           </div>
         )}
       </div>
@@ -470,15 +470,15 @@ export const ExpenseTracker: React.FC<ExpenseTrackerProps> = ({
       {/* Manual Expense Modal */}
       {isAddingExpense && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs">
-          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-xl overflow-hidden animate-in fade-in zoom-in-95 duration-150">
-            <div className="px-6 py-4 bg-slate-900 text-white flex items-center justify-between">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 w-full max-w-xl overflow-hidden animate-in fade-in zoom-in-95 duration-150 text-slate-900 dark:text-slate-100">
+            <div className="px-6 py-4 bg-slate-900 dark:bg-slate-800 text-white flex items-center justify-between border-b dark:border-slate-700">
               <div>
                 <h3 className="font-bold text-base">Record Restaurant Expense</h3>
                 <p className="text-xs text-slate-400">Log vendor bills, utility receipts, or ingredient purchases</p>
               </div>
               <button 
                 onClick={() => setIsAddingExpense(false)}
-                className="text-slate-400 hover:text-white p-1"
+                className="text-slate-400 hover:text-white p-1 cursor-pointer"
               >
                 ✕
               </button>
@@ -487,51 +487,51 @@ export const ExpenseTracker: React.FC<ExpenseTrackerProps> = ({
             <form onSubmit={handleSaveManualExpense} className="p-6 space-y-4 text-xs">
               <div className="grid grid-cols-2 gap-3">
                 <div className="col-span-2 sm:col-span-1">
-                  <label className="block font-bold text-slate-700 mb-1">Vendor / Supplier Name *</label>
+                  <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Vendor / Supplier Name *</label>
                   <input
                     type="text"
                     required
                     placeholder="e.g. Sysco, Local Farms, PG&E"
                     value={vendorName}
                     onChange={(e) => setVendorName(e.target.value)}
-                    className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg focus:outline-none"
+                    className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
                   />
                 </div>
 
                 <div className="col-span-2 sm:col-span-1">
-                  <label className="block font-bold text-slate-700 mb-1">Invoice / Bill #</label>
+                  <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Invoice / Bill #</label>
                   <input
                     type="text"
                     placeholder="e.g. INV-90412"
                     value={invoiceNumber}
                     onChange={(e) => setInvoiceNumber(e.target.value)}
-                    className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg focus:outline-none font-mono"
+                    className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 font-mono"
                   />
                 </div>
 
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1">Category *</label>
+                  <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Category *</label>
                   <select
                     value={category}
                     onChange={(e) => setCategory(e.target.value as ExpenseCategory)}
-                    className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg focus:outline-none"
+                    className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
                   >
                     {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
                   </select>
                 </div>
 
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1">Expense Date</label>
+                  <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Expense Date</label>
                   <input
                     type="date"
                     value={expenseDate}
                     onChange={(e) => setExpenseDate(e.target.value)}
-                    className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg focus:outline-none"
+                    className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
                   />
                 </div>
 
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1">Total Amount ({profile.currencySymbol}) *</label>
+                  <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Total Amount ({profile.currencySymbol}) *</label>
                   <input
                     type="number"
                     step="0.01"
@@ -539,28 +539,28 @@ export const ExpenseTracker: React.FC<ExpenseTrackerProps> = ({
                     value={amount || ''}
                     onChange={(e) => setAmount(parseFloat(e.target.value) || 0)}
                     placeholder="0.00"
-                    className="w-full px-3 py-2 bg-white border border-amber-400 font-bold font-mono text-sm rounded-lg focus:outline-none text-slate-900"
+                    className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-amber-400 dark:border-amber-500 font-bold font-mono text-sm rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 text-slate-900 dark:text-white"
                   />
                 </div>
 
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1">Tax Amount ({profile.currencySymbol})</label>
+                  <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Tax Amount ({profile.currencySymbol})</label>
                   <input
                     type="number"
                     step="0.01"
                     value={taxAmount || ''}
                     onChange={(e) => setTaxAmount(parseFloat(e.target.value) || 0)}
                     placeholder="0.00"
-                    className="w-full px-3 py-2 bg-white border border-slate-300 font-mono rounded-lg focus:outline-none"
+                    className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white font-mono rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
                   />
                 </div>
 
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1">Payment Method</label>
+                  <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Payment Method</label>
                   <select
                     value={paymentMethod}
                     onChange={(e) => setPaymentMethod(e.target.value)}
-                    className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg focus:outline-none"
+                    className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
                   >
                     <option value="Credit Card">Credit Card</option>
                     <option value="Bank Transfer">Bank Transfer (ACH)</option>
@@ -571,11 +571,11 @@ export const ExpenseTracker: React.FC<ExpenseTrackerProps> = ({
                 </div>
 
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1">Payment Status</label>
+                  <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Payment Status</label>
                   <select
                     value={paymentStatus}
                     onChange={(e) => setPaymentStatus(e.target.value as any)}
-                    className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg focus:outline-none"
+                    className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
                   >
                     <option value="paid">Paid</option>
                     <option value="pending">Pending</option>
@@ -585,27 +585,27 @@ export const ExpenseTracker: React.FC<ExpenseTrackerProps> = ({
               </div>
 
               <div>
-                <label className="block font-bold text-slate-700 mb-1">Description / Memo</label>
+                <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Description / Memo</label>
                 <textarea
                   rows={2}
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
                   placeholder="Ingredients list, invoice details, or vendor notes..."
-                  className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg focus:outline-none"
+                  className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
                 />
               </div>
 
-              <div className="pt-3 border-t border-slate-200 flex items-center justify-between">
+              <div className="pt-3 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between">
                 <button
                   type="button"
                   onClick={() => setIsAddingExpense(false)}
-                  className="px-4 py-2 text-slate-600 hover:text-slate-900"
+                  className="px-4 py-2 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-bold shadow-md"
+                  className="px-5 py-2 bg-slate-900 dark:bg-amber-500 hover:bg-slate-800 dark:hover:bg-amber-400 text-white dark:text-slate-950 rounded-xl font-bold shadow-md cursor-pointer transition-all"
                 >
                   Save Expense Record
                 </button>
@@ -618,29 +618,29 @@ export const ExpenseTracker: React.FC<ExpenseTrackerProps> = ({
       {/* Delete Expense Confirmation Modal */}
       {expenseToDelete && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs">
-          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-150">
             <div className="p-6 space-y-4">
-              <div className="w-12 h-12 bg-red-100 text-red-600 rounded-2xl flex items-center justify-center mx-auto">
+              <div className="w-12 h-12 bg-red-100 dark:bg-red-950/50 text-red-600 dark:text-red-400 rounded-2xl flex items-center justify-center mx-auto border border-red-200 dark:border-red-900/50">
                 <Trash2 className="w-6 h-6" />
               </div>
 
               <div className="text-center">
-                <h3 className="text-base font-bold text-slate-900">Delete Expense Record?</h3>
-                <p className="text-xs text-slate-500 mt-1">
-                  Are you sure you want to delete the expense entry from <strong className="text-slate-900">{expenseToDelete.vendorName}</strong>?
+                <h3 className="text-base font-bold text-slate-900 dark:text-white">Delete Expense Record?</h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                  Are you sure you want to delete the expense entry from <strong className="text-slate-900 dark:text-white">{expenseToDelete.vendorName}</strong>?
                 </p>
-                <div className="mt-3 p-3 bg-slate-50 rounded-xl border border-slate-200 text-xs font-mono text-left">
-                  <div className="flex justify-between text-slate-600">
+                <div className="mt-3 p-3 bg-slate-50 dark:bg-slate-800/80 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-mono text-left">
+                  <div className="flex justify-between text-slate-600 dark:text-slate-400">
                     <span>Category:</span>
-                    <span className="font-bold text-slate-900">{expenseToDelete.category}</span>
+                    <span className="font-bold text-slate-900 dark:text-white">{expenseToDelete.category}</span>
                   </div>
-                  <div className="flex justify-between text-slate-600 mt-1">
+                  <div className="flex justify-between text-slate-600 dark:text-slate-400 mt-1">
                     <span>Total Expense:</span>
-                    <span className="font-bold text-red-700">{formatCurrency(expenseToDelete.totalAmount, profile.currencySymbol)}</span>
+                    <span className="font-bold text-red-600 dark:text-red-400">{formatCurrency(expenseToDelete.amount, profile.currencySymbol)}</span>
                   </div>
-                  <div className="flex justify-between text-slate-600 mt-1">
+                  <div className="flex justify-between text-slate-600 dark:text-slate-400 mt-1">
                     <span>Date:</span>
-                    <span className="text-slate-700">{expenseToDelete.date}</span>
+                    <span className="text-slate-700 dark:text-slate-300">{expenseToDelete.date}</span>
                   </div>
                 </div>
               </div>
@@ -649,7 +649,7 @@ export const ExpenseTracker: React.FC<ExpenseTrackerProps> = ({
                 <button
                   type="button"
                   onClick={() => setExpenseToDelete(null)}
-                  className="px-4 py-2 text-xs font-bold text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-xl cursor-pointer"
+                  className="px-4 py-2 text-xs font-bold text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl cursor-pointer"
                 >
                   Cancel
                 </button>

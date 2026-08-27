@@ -248,7 +248,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                     promptInstall();
                   }
                 }}
-                title="Install RestoPOS as a Desktop/Tablet Application (PWA)"
+                title="Install ZookaRestoPos as a Desktop/Tablet Application (PWA)"
                 className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-black text-xs shadow-md shadow-amber-500/20 transition-all cursor-pointer active:scale-95"
               >
                 <Download className="w-3.5 h-3.5" />

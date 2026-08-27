@@ -679,7 +679,7 @@ export const POSBilling: React.FC<POSBillingProps> = ({
                 return (
                   <div
                     key={item.id}
-                    className={`p-2.5 sm:p-3 bg-white dark:bg-slate-850/90 rounded-xl border transition-all flex items-center justify-between gap-3 ${
+                    className={`p-2.5 sm:p-3 bg-white dark:bg-slate-800/90 rounded-xl border transition-all flex items-center justify-between gap-3 ${
                       inCartCount > 0
                         ? 'border-amber-400 dark:border-amber-500/70 bg-amber-50/30 dark:bg-amber-950/20 shadow-xs'
                         : 'border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600 hover:shadow-xs'

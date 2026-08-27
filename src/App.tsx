@@ -40,6 +40,8 @@ import { CustomerTableOrdering } from './components/CustomerTableOrdering';
 import { LoginModal } from './components/LoginModal';
 import { StaffManagementModal } from './components/StaffManagementModal';
 import { DailySalesSummaryModal } from './components/DailySalesSummaryModal';
+import { PWAInstallBanner } from './components/PWAInstallBanner';
+import { PWAInstallModal } from './components/PWAInstallModal';
 import { CloudDatabaseService } from './firebase';
 import { playOrderChimeSound, playKitchenBell, playStaffAlertChime } from './utils/sound';
 import { generateId } from './utils/formatters';
@@ -1039,7 +1041,7 @@ export default function App() {
   const unpaidExpensesCount = expenses.filter(e => e.paymentStatus === 'pending').length;
   const activeKitchenOrdersCount = orders.filter(o => {
     if (o.isArchived || o.paymentStatus === 'cancelled') return false;
-    const st = o.kitchenStatus || (o.paymentStatus === 'pending' ? 'pending' : (o.paymentStatus === 'paid' && !o.tableNumber ? 'completed' : 'pending'));
+    const st = o.kitchenStatus || 'pending';
     return st === 'pending' || st === 'preparing' || st === 'ready';
   }).length;
 
@@ -1461,6 +1463,12 @@ export default function App() {
         onOpenStaffManagement={() => setIsStaffManagementOpen(true)}
         isLocked={isTerminalLocked || !currentUser}
       />
+
+      {/* PWA Floating Install & Offline Notification Banner */}
+      <PWAInstallBanner />
+
+      {/* PWA Step-by-Step Installation Modal */}
+      <PWAInstallModal />
     </div>
   );
 }

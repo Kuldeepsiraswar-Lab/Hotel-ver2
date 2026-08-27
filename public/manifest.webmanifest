@@ -1,0 +1,71 @@
+{
+  "name": "RestoPOS - Restaurant Billing & POS Suite",
+  "short_name": "RestoPOS",
+  "description": "Comprehensive restaurant billing, high-speed POS, table QR self-ordering, kitchen display system, and expense management.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "theme_color": "#f59e0b",
+  "background_color": "#0f172a",
+  "categories": ["business", "finance", "food", "productivity", "utilities"],
+  "lang": "en",
+  "dir": "ltr",
+  "prefer_related_applications": false,
+  "icons": [
+    {
+      "src": "/icons/icon-192.svg",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-512.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-512.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "New POS Order",
+      "short_name": "POS",
+      "description": "Open high-speed POS billing terminal",
+      "url": "/?tab=pos",
+      "icons": [{ "src": "/icons/icon-192.svg", "sizes": "192x192" }]
+    },
+    {
+      "name": "Kitchen Display (KDS)",
+      "short_name": "Kitchen",
+      "description": "Open live kitchen order display board",
+      "url": "/?tab=kitchen",
+      "icons": [{ "src": "/icons/icon-192.svg", "sizes": "192x192" }]
+    },
+    {
+      "name": "Table QR Suite",
+      "short_name": "Table QR",
+      "description": "Generate and print table QR ordering standees",
+      "url": "/?tab=tableqr",
+      "icons": [{ "src": "/icons/icon-192.svg", "sizes": "192x192" }]
+    },
+    {
+      "name": "Daily Sales & Closeout",
+      "short_name": "Sales",
+      "description": "View daily sales summary and terminal reports",
+      "url": "/?tab=dashboard",
+      "icons": [{ "src": "/icons/icon-192.svg", "sizes": "192x192" }]
+    }
+  ]
+}

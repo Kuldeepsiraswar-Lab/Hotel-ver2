@@ -20,11 +20,14 @@ import {
   ChevronRight, 
   X, 
   ShieldAlert,
-  BarChart3
+  BarChart3,
+  Download,
+  Smartphone
 } from 'lucide-react';
 import { RestaurantProfile, StaffUser } from '../types';
 import { NavTab } from './Navbar';
 import { useTheme } from '../context/ThemeContext';
+import { usePWA } from '../context/PWAContext';
 import { 
   isKitchenStaff, 
   canAccessSettings, 
@@ -85,6 +88,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onCloseTerminal,
 }) => {
   const { isDark, toggleTheme } = useTheme();
+  const { canInstall, isInstalled, isStandalone, isIOS, promptInstall, setIsInstallModalOpen } = usePWA();
   const isKitchen = isKitchenStaff(currentUser);
   const [hoveredTooltip, setHoveredTooltip] = useState<string | null>(null);
 
@@ -599,6 +603,43 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     {isCollapsed && hoveredTooltip === 'settings' && (
                       <div className="hidden md:block absolute left-full ml-3 top-1/2 -translate-y-1/2 z-50 bg-slate-950 text-white border border-slate-700 px-3 py-1.5 rounded-xl text-xs font-bold shadow-2xl pointer-events-none whitespace-nowrap">
                         Restaurant Settings Hub
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Install PWA Desktop / Tablet App */}
+                {!isStandalone && !isInstalled && (canInstall || isIOS) && (
+                  <div className="relative group">
+                    <button
+                      type="button"
+                      id="sidebar-install-app-btn"
+                      onClick={() => {
+                        if (isMobileOpen) onCloseMobile();
+                        if (isIOS) {
+                          setIsInstallModalOpen(true);
+                        } else {
+                          promptInstall();
+                        }
+                      }}
+                      onMouseEnter={() => setHoveredTooltip('install-pwa')}
+                      onMouseLeave={() => setHoveredTooltip(null)}
+                      className={`w-full rounded-xl text-left transition-all flex items-center bg-gradient-to-r from-amber-500/10 to-amber-600/10 hover:from-amber-500/20 hover:to-amber-600/20 text-amber-300 border border-amber-500/30 hover:border-amber-400 cursor-pointer ${
+                        isCollapsed ? 'md:justify-center md:p-2.5' : 'p-2 gap-2.5'
+                      }`}
+                    >
+                      <div className="p-1.5 bg-amber-500 text-slate-950 rounded-lg shrink-0 font-bold shadow-xs">
+                        <Download className="w-4 h-4" />
+                      </div>
+                      <div className={`min-w-0 flex-1 ${isCollapsed ? 'md:hidden' : 'block'}`}>
+                        <span className="text-xs font-bold block text-amber-300">Install POS App</span>
+                        <span className="text-[10px] text-amber-400/80 block">Standalone Desktop & iPad</span>
+                      </div>
+                    </button>
+
+                    {isCollapsed && hoveredTooltip === 'install-pwa' && (
+                      <div className="hidden md:block absolute left-full ml-3 top-1/2 -translate-y-1/2 z-50 bg-slate-950 text-white border border-slate-700 px-3 py-1.5 rounded-xl text-xs font-bold shadow-2xl pointer-events-none whitespace-nowrap">
+                        Install RestoPOS App (PWA)
                       </div>
                     )}
                   </div>

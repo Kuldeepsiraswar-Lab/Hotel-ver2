@@ -136,11 +136,6 @@ export const KitchenView: React.FC<KitchenViewProps> = ({
   const getOrderKitchenStatus = (order: BillOrder): KitchenStatus => {
     if (order.kitchenStatus) return order.kitchenStatus;
     if (order.paymentStatus === 'cancelled') return 'cancelled';
-    if (order.paymentStatus === 'paid' && !order.tableNumber) {
-      // Completed historic order if old
-      const ageMs = Date.now() - new Date(order.createdAt).getTime();
-      if (ageMs > 1000 * 60 * 60 * 2) return 'completed';
-    }
     return 'pending';
   };
 
@@ -150,8 +145,7 @@ export const KitchenView: React.FC<KitchenViewProps> = ({
       status === 'completed' ||
       status === 'served' ||
       order.kitchenStatus === 'completed' ||
-      order.kitchenStatus === 'served' ||
-      order.paymentStatus === 'paid'
+      order.kitchenStatus === 'served'
     );
   };
 
@@ -1094,7 +1088,7 @@ export const KitchenView: React.FC<KitchenViewProps> = ({
                     <span className="opacity-90 font-mono text-[10px]">
                       {order.kitchenCompletedAt 
                         ? `At ${new Date(order.kitchenCompletedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
-                        : order.paymentStatus === 'paid' ? 'Paid / Settled' : 'Completed'}
+                        : (order.kitchenStatus === 'served' || order.kitchenStatus === 'completed') ? 'Served / Completed' : 'Completed'}
                     </span>
                   </div>
                 )}

@@ -32,12 +32,18 @@ import {
   Check,
   ShieldCheck,
   Search,
-  Sparkles
+  Sparkles,
+  Smartphone,
+  Tablet,
+  Wifi,
+  WifiOff,
+  Zap
 } from 'lucide-react';
 import { RestaurantProfile, StaffUser, StaffRole } from '../types';
 import { isAdminOrOwner } from '../utils/permissions';
 import { AdminAuthModal } from './AdminAuthModal';
 import { useTheme } from '../context/ThemeContext';
+import { usePWA } from '../context/PWAContext';
 
 export type SettingsChipTab = 
   | 'all'
@@ -49,6 +55,7 @@ export type SettingsChipTab =
   | 'bank_details'
   | 'invoice_footer'
   | 'cloud_db'
+  | 'pwa_offline'
   | 'data_backup';
 
 interface SettingsModalProps {
@@ -101,6 +108,18 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   initialTab = 'general',
 }) => {
   const { theme, setTheme, isDark } = useTheme();
+  const { 
+    isOnline, 
+    canInstall, 
+    isInstalled, 
+    isStandalone, 
+    isIOS, 
+    promptInstall, 
+    setIsInstallModalOpen, 
+    hasUpdate, 
+    updateApp,
+    swRegistration 
+  } = usePWA();
   const isAdmin = isAdminOrOwner(currentUser);
 
   // Active Chip Navigation Tab
@@ -307,6 +326,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     { id: 'bank_details', label: 'Bank Details', icon: CreditCard, accentColor: 'border-teal-500 text-teal-400' },
     { id: 'invoice_footer', label: 'Invoice Footer', icon: Receipt, accentColor: 'border-orange-500 text-orange-400' },
     { id: 'cloud_db', label: 'Cloud Database', icon: Cloud, badge: 'Live', accentColor: 'border-emerald-500 text-emerald-400' },
+    { id: 'pwa_offline', label: 'PWA & Offline POS', icon: Smartphone, badge: isStandalone ? 'Active' : 'Install', accentColor: 'border-amber-500 text-amber-400' },
     { id: 'data_backup', label: 'Data & Backup', icon: HardDrive, accentColor: 'border-indigo-500 text-indigo-400' },
   ];
 
@@ -1151,6 +1171,121 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                         )}
                       </div>
                     )}
+                  </div>
+                </div>
+              )}
+
+              {/* 8B. PROGRESSIVE WEB APP (PWA) & OFFLINE POS */}
+              {shouldShowSection('pwa_offline') && (
+                <div className="p-4 bg-amber-50/50 dark:bg-amber-950/20 border border-amber-300 dark:border-amber-800/50 rounded-2xl space-y-4">
+                  <div className="flex items-center justify-between pb-2 border-b border-amber-200 dark:border-amber-800/40">
+                    <h4 className="font-bold text-amber-950 dark:text-amber-300 text-xs uppercase tracking-wider flex items-center gap-2">
+                      <div className="p-1.5 bg-amber-500/10 text-amber-500 rounded-lg">
+                        <Smartphone className="w-4 h-4" />
+                      </div>
+                      <span>Progressive Web App (PWA) & Offline Billing</span>
+                    </h4>
+                    <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${
+                      isOnline 
+                        ? 'bg-emerald-100 dark:bg-emerald-900/60 text-emerald-800 dark:text-emerald-300 border-emerald-300 dark:border-emerald-700/50'
+                        : 'bg-amber-100 dark:bg-amber-900/60 text-amber-800 dark:text-amber-300 border-amber-300 dark:border-amber-700/50'
+                    }`}>
+                      <span className={`w-2 h-2 rounded-full ${isOnline ? 'bg-emerald-500' : 'bg-amber-500 animate-ping'}`} /> 
+                      {isOnline ? 'Online Ready' : 'Offline Mode'}
+                    </span>
+                  </div>
+
+                  <p className="text-xs text-slate-600 dark:text-slate-300">
+                    Install RestoPOS as an independent desktop or tablet application. The app caches static resources and offline data locally, allowing uninterrupted order taking, bill generation, and kitchen ticketing even if internet connectivity drops.
+                  </p>
+
+                  {/* Status Grid */}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                    <div className="p-3 bg-white dark:bg-slate-800/80 rounded-xl border border-slate-200 dark:border-slate-700">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">
+                        Application Mode
+                      </span>
+                      <div className="flex items-center gap-1.5 font-bold text-xs text-slate-800 dark:text-slate-100">
+                        {isStandalone ? (
+                          <>
+                            <Monitor className="w-4 h-4 text-emerald-500" />
+                            <span>Standalone Window</span>
+                          </>
+                        ) : (
+                          <>
+                            <Smartphone className="w-4 h-4 text-amber-500" />
+                            <span>Web Browser Mode</span>
+                          </>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="p-3 bg-white dark:bg-slate-800/80 rounded-xl border border-slate-200 dark:border-slate-700">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">
+                        Network Connectivity
+                      </span>
+                      <div className="flex items-center gap-1.5 font-bold text-xs">
+                        {isOnline ? (
+                          <span className="text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                            <Wifi className="w-4 h-4" /> Live Internet
+                          </span>
+                        ) : (
+                          <span className="text-amber-600 dark:text-amber-400 flex items-center gap-1">
+                            <WifiOff className="w-4 h-4" /> Offline Terminal
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="p-3 bg-white dark:bg-slate-800/80 rounded-xl border border-slate-200 dark:border-slate-700">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">
+                        Service Worker Cache
+                      </span>
+                      <div className="flex items-center gap-1.5 font-bold text-xs text-slate-800 dark:text-slate-100">
+                        <Zap className="w-4 h-4 text-amber-500" />
+                        <span>{swRegistration ? 'Active (v1.0)' : 'Active'}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Actions */}
+                  <div className="flex flex-wrap items-center gap-2.5 pt-1">
+                    {!isStandalone && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (canInstall) {
+                            promptInstall();
+                          } else {
+                            setIsInstallModalOpen(true);
+                          }
+                        }}
+                        className="px-3.5 py-2 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 rounded-xl font-bold text-xs flex items-center gap-1.5 shadow-md shadow-amber-500/20 cursor-pointer transition-all"
+                      >
+                        <Download className="w-4 h-4" />
+                        <span>{canInstall ? 'Install RestoPOS Application' : 'Installation Guide (iOS / Desktop)'}</span>
+                      </button>
+                    )}
+
+                    {hasUpdate && (
+                      <button
+                        type="button"
+                        onClick={updateApp}
+                        className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-xs flex items-center gap-1.5 shadow-xs cursor-pointer transition-colors"
+                      >
+                        <RefreshCw className="w-4 h-4 animate-spin" />
+                        <span>Update Available — Reload Now</span>
+                      </button>
+                    )}
+
+                    <button
+                      type="button"
+                      onClick={() => setIsInstallModalOpen(true)}
+                      className="px-3 py-2 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl font-bold text-xs flex items-center gap-1.5 shadow-xs cursor-pointer transition-colors"
+                    >
+                      <Tablet className="w-3.5 h-3.5" />
+                      <span>iPad & Android Instructions</span>
+                    </button>
                   </div>
                 </div>
               )}

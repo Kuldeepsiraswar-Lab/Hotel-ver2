@@ -2,15 +2,36 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>My Google AI Studio App</title>
-    <meta name="description" content="An application built with Google AI Studio." />
-    <meta property="og:title" content="My Google AI Studio App" />
-    <meta property="og:description" content="An application built with Google AI Studio." />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>RestoPOS - Restaurant Billing & POS Suite</title>
+    <meta name="description" content="High-speed restaurant billing, POS point of sale, table QR self-ordering, kitchen display system, and AI receipt expense management." />
+    
+    <!-- PWA Web App Manifest -->
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="alternate icon" href="/manifest.json" />
+
+    <!-- Standard Favicons and SVG App Icon -->
+    <link rel="icon" type="image/svg+xml" href="/icons/icon.svg" />
+    <link rel="apple-touch-icon" href="/icons/icon-192.svg" />
+    <link rel="mask-icon" href="/icons/icon.svg" color="#f59e0b" />
+
+    <!-- Mobile Browser Theme Color -->
+    <meta name="theme-color" content="#f59e0b" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#0f172a" media="(prefers-color-scheme: dark)" />
+
+    <!-- iOS Safari PWA Standalone Mode Settings -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="RestoPOS" />
+    <meta name="mobile-web-app-capable" content="yes" />
+
+    <!-- Open Graph & Social Cards -->
+    <meta property="og:title" content="RestoPOS - Restaurant Billing & POS Suite" />
+    <meta property="og:description" content="Comprehensive restaurant billing, POS, table QR code scan & order suite, expense tracking, and invoice generator." />
     <meta property="og:type" content="website" />
     <meta name="twitter:card" content="summary_large_image" />
   </head>
-  <body>
+  <body class="bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 antialiased selection:bg-amber-500 selection:text-slate-950">
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

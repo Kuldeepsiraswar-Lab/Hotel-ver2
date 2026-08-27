@@ -19,11 +19,13 @@ import {
   Cloud, 
   ChevronRight,
   ShieldAlert,
-  DollarSign
+  DollarSign,
+  Download
 } from 'lucide-react';
 import { RestaurantProfile, StaffUser } from '../types';
 import { NavTab } from './Navbar';
 import { useTheme } from '../context/ThemeContext';
+import { usePWA } from '../context/PWAContext';
 import { isKitchenStaff, canAccessSettings, canAccessStaffManagement, canAccessTableQR, canUserAccessTab, isManagerOrOwner, isAdminOrOwner } from '../utils/permissions';
 
 interface NavDrawerProps {
@@ -72,6 +74,7 @@ export const NavDrawer: React.FC<NavDrawerProps> = ({
   onCloseTerminal,
 }) => {
   const { isDark, toggleTheme } = useTheme();
+  const { canInstall, isInstalled, isStandalone, isIOS, promptInstall, setIsInstallModalOpen } = usePWA();
   const isKitchen = isKitchenStaff(currentUser);
 
   // Close on Escape key press
@@ -446,6 +449,33 @@ export const NavDrawer: React.FC<NavDrawerProps> = ({
                   </div>
                   <ChevronRight className="w-4 h-4 text-slate-500 group-hover:text-slate-200 transition-transform group-hover:translate-x-0.5" />
                 </button>
+
+                {/* Install App on Tablet/Phone */}
+                {!isStandalone && !isInstalled && (canInstall || isIOS) && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onClose();
+                      if (isIOS) {
+                        setIsInstallModalOpen(true);
+                      } else {
+                        promptInstall();
+                      }
+                    }}
+                    className="p-3 bg-gradient-to-r from-amber-500/10 to-amber-600/10 hover:from-amber-500/20 hover:to-amber-600/20 border border-amber-500/30 rounded-xl text-left transition-all cursor-pointer group flex items-center justify-between"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <div className="p-1.5 bg-amber-500 text-slate-950 rounded-lg shrink-0 font-bold shadow-xs">
+                        <Download className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <span className="text-xs font-bold text-amber-300 block">Install RestoPOS App</span>
+                        <span className="text-[10px] text-amber-400/80">Add to Home Screen for Offline POS</span>
+                      </div>
+                    </div>
+                    <ChevronRight className="w-4 h-4 text-amber-400 group-hover:translate-x-0.5 transition-transform" />
+                  </button>
+                )}
               </div>
             </div>
           )}

@@ -14,11 +14,14 @@ import {
   QrCode,
   Clock,
   KeyRound,
-  BarChart3
+  BarChart3,
+  Download,
+  WifiOff
 } from 'lucide-react';
 import { RestaurantProfile, AppNotification, BillOrder, StaffUser } from '../types';
 import { NotificationMenu } from './NotificationMenu';
 import { isKitchenStaff, isAdminOrOwner } from '../utils/permissions';
+import { usePWA } from '../context/PWAContext';
 
 export type NavTab = 'dashboard' | 'pos' | 'kitchen' | 'invoices' | 'expenses' | 'financials' | 'menu' | 'tableqr';
 
@@ -82,6 +85,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenMobileSidebar,
 }) => {
   const isKitchen = isKitchenStaff(currentUser);
+  const { isOnline, canInstall, isInstalled, isStandalone, isIOS, promptInstall, setIsInstallModalOpen } = usePWA();
   
   // Real-time clock for the POS top bar
   const [currentTime, setCurrentTime] = useState<string>('');
@@ -218,6 +222,37 @@ export const Navbar: React.FC<NavbarProps> = ({
                 <span className="text-[10px] uppercase font-extrabold px-1.5 py-0.2 rounded bg-slate-900 text-amber-300 border border-slate-700">
                   {currentUser.role}
                 </span>
+              </button>
+            )}
+
+            {/* Offline Status Badge */}
+            {!isOnline && (
+              <div 
+                title="Offline Mode Active: Orders and bills are cached locally on this device"
+                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-amber-500 text-slate-950 text-xs font-bold shadow-xs animate-pulse"
+              >
+                <WifiOff className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline text-[11px]">Offline POS</span>
+              </div>
+            )}
+
+            {/* PWA App Install Button */}
+            {!isStandalone && !isInstalled && (canInstall || isIOS) && (
+              <button
+                type="button"
+                id="navbar-install-pwa-btn"
+                onClick={() => {
+                  if (isIOS) {
+                    setIsInstallModalOpen(true);
+                  } else {
+                    promptInstall();
+                  }
+                }}
+                title="Install RestoPOS as a Desktop/Tablet Application (PWA)"
+                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-black text-xs shadow-md shadow-amber-500/20 transition-all cursor-pointer active:scale-95"
+              >
+                <Download className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline text-[11px]">Install App</span>
               </button>
             )}
 
